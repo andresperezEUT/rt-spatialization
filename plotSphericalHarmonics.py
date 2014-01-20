@@ -1,26 +1,44 @@
 # -*- coding: utf-8 -*-
-"""
-ANDRÉS PÉREZ LÓPEZ
-Created on Thu Jan  9 20:45:43 2014
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-first 5 spherical harmonics, represented in horizontal plane
+Copyright ANDRÉS PÉREZ LÓPEZ, January 2014
+contact@andresperezlopez.com
 
-elevation defined as theta [-pi/2,pi/2]
-azimut defined as phi [0,2*pi]
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-TODO: normalizacion
-plot con los armonicos 1º order
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+            AMBISONICS ENCODING SIMULATIONS
 
-codigo supercollider codificacion fuente puntual
-"""
+Following code provides some visualization tools for ambisonics encoding, up to 3rd order
+
+Conventions used:
+    - elevation defined as theta [-pi/2,pi/2]
+    - azimut defined as phi [0,2*pi]
+    - encoding with N3D coefficients
+    
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 from numpy import *
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 functions to calculate spherical harmonics coefficients up to 3rd order 
+
+use of 3D Normalized Coefficients (N3D)
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 def nullOrder(theta,phi):
@@ -35,10 +53,9 @@ def firstOrder(theta,phi):
     """
     calculate first order spherical harmonics
     """
-    numChannels=3
-    X=sqrt(3.)*cos(theta)*cos(phi)/numChannels
-    Y=sqrt(3.)*cos(theta)*sin(phi)/numChannels
-    Z=sqrt(3.)*sin(theta)/numChannels
+    X=sqrt(3.)*cos(theta)*cos(phi)
+    Y=sqrt(3.)*cos(theta)*sin(phi)
+    Z=sqrt(3.)*sin(theta)
     
     return X,Y,Z
 
@@ -46,12 +63,11 @@ def secondOrder(theta,phi):
     """
     calculate second order spherical harmonics
     """
-    numChannels=5
-    V=sqrt(5.)*sqrt(3.)/2.*sin(2.*phi)*(cos(theta)**2.)/numChannels
-    T=sqrt(5.)*sqrt(3.)/2.*sin(phi)*sin(2.*theta)/numChannels
-    R=sqrt(5.)*(3.*(sin(theta)**2.)-1.)/2./numChannels
-    S=sqrt(5.)*sqrt(3.)/2.*cos(phi)*sin(2*theta)/numChannels
-    U=sqrt(5.)*sqrt(3.)/2.*cos(2.*phi)*(cos(theta)**2.)/numChannels
+    V=sqrt(5.)*sqrt(3.)/2.*sin(2.*phi)*(cos(theta)**2.)
+    T=sqrt(5.)*sqrt(3.)/2.*sin(phi)*sin(2.*theta)
+    R=sqrt(5.)*(3.*(sin(theta)**2.)-1.)/2
+    S=sqrt(5.)*sqrt(3.)/2.*cos(phi)*sin(2*theta)
+    U=sqrt(5.)*sqrt(3.)/2.*cos(2.*phi)*(cos(theta)**2.)
     
     return V,T,R,S,U
     
@@ -59,21 +75,30 @@ def thirdOrder(theta,phi):
     """
     calculate third order spherical harmonics
     """
-    numChannels=7
-    Q=sqrt(7.)*sqrt(5./8.)*sin(3.*phi)*(cos(theta)**3.)/numChannels 
-    O=sqrt(7.)*sqrt(15.)/2.*sin(2.*phi)*sin(theta)*cos(theta)**2./numChannels 
-    M=sqrt(7.)*sqrt(3./8.)*sin(phi)*cos(theta)*(5.*sin(theta)**2.-1.)/numChannels 
-    K=sqrt(7.)*sin(theta)*(5.*sin(theta)**2.-3.)/2./numChannels 
-    L=sqrt(7.)*sqrt(3./8.)*cos(phi)*cos(theta)*(5.*sin(theta)**2.-1.)/numChannels
-    N=sqrt(7.)*sqrt(15.)/2.*cos(2.*phi)*sin(theta)*cos(theta)**2./numChannels
-    P=sqrt(7.)*sqrt(5./8.)*cos(3.*phi)*cos(theta)**3./numChannels
+    Q=sqrt(7.)*sqrt(5./8.)*sin(3.*phi)*(cos(theta)**3.)
+    O=sqrt(7.)*sqrt(15.)/2.*sin(2.*phi)*sin(theta)*cos(theta)**2.
+    M=sqrt(7.)*sqrt(3./8.)*sin(phi)*cos(theta)*(5.*sin(theta)**2.-1.)
+    K=sqrt(7.)*sin(theta)*(5.*sin(theta)**2.-3.)/2.
+    L=sqrt(7.)*sqrt(3./8.)*cos(phi)*cos(theta)*(5.*sin(theta)**2.-1.)
+    N=sqrt(7.)*sqrt(15.)/2.*cos(2.*phi)*sin(theta)*cos(theta)**2.
+    P=sqrt(7.)*sqrt(5./8.)*cos(3.*phi)*cos(theta)**3.
     
     return Q,O,M,K,L,N,P
     
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 functions to help with computing and plotting
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-    
+
+def isZero(x):
+    """
+    test if all components of the given array are zero
+    """
+    if all(x==zeros(x.size)):
+        ans=True
+    else: 
+        ans=False
+        
+    return ans
     
 def separateSign(x):
     """
@@ -92,18 +117,10 @@ def separateSign(x):
     
     return pos,neg
     
-def isZero(x):
+def plotSeparate(phi,x):
     """
     test if all components of the given array are zero
     """
-    if all(x==zeros(x.size)):
-        ans=True
-    else: 
-        ans=False
-        
-    return ans
-    
-def plotSeparate(phi,x):
     x_pos,x_neg=separateSign(x)
     if not(isZero(x_pos)):    
         plt.plot(phi,x_pos,'b')
@@ -112,16 +129,16 @@ def plotSeparate(phi,x):
     return
         
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot spherical harmonics, in a horizontal plane
+functions to plot spherical harmonics
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 def plotHarmonics(step=1000,theta=0):
     """
-    plot up to l=3 spherical harmonics in the polar horizontal plane
+    plot a polar representation of the 3D spherical harmonics up to 3rd order
     
     Parameters:
         step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane )
+        theta: elevation angle of the plane (default:0 rads - horizontal plane )
     """
     #plot parameters
     phi=arange(0,2*pi,2*pi/step)
@@ -179,18 +196,16 @@ def plotHarmonics(step=1000,theta=0):
     plt.xlabel('m=3')
     
     return
+
     
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect of a point source on spherical harmonics, in a horizontal plane
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-    
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""    
 def plotPointSource(step=1000,theta=0,theta_s=0,phi_s=0):
     """
-    2D polar plot of the effect of a point sound source in the spherical harmonic basis
+    plot a polar representation of a puntual source encoded with 3D spherical harmonics up to 3rd order
     
     Parameters:
         step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
+        theta: elevation angle of the plane (default:0 rads - horizontal plane)
         theta_s: source's elevation angle 
         phi_s: source's azimuth angle
     """
@@ -257,16 +272,15 @@ def plotPointSource(step=1000,theta=0,theta_s=0,phi_s=0):
     
     return
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect of a moving point source on spherical harmonics, in a horizontal plane
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 def plotPointSourceMoving(step=100,theta=0,theta_s=0):
     """
-    2D polar plot of the effect of a point sound source, moving around phi, in the spherical harmonic basis
+    plot a polar representation of a circle-moving puntual source encoded with 3D spherical harmonics up to 3rd order
     
     Parameters:
         step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
+        theta: elevation angle of the plane (default:0 rads - horizontal plane)
         theta_s: source's elevation angle 
     """
     
@@ -277,6 +291,8 @@ def plotPointSourceMoving(step=100,theta=0,theta_s=0):
     theta=ones(step)*theta
     global phi_s #initial value
     phi_s=0
+    
+    y_lim=5 #max amplitude value
     
     #encoding values
     W=              nullOrder(theta,phi)
@@ -294,103 +310,103 @@ def plotPointSourceMoving(step=100,theta=0,theta_s=0):
     fig = plt.figure(figsize=(20,10))
     
     ax4=fig.add_subplot(474,polar=True)
-    ax4.set_ylim(0,1)
+    ax4.set_ylim(0,y_lim)
     line4a, = ax4.plot([], [], color='b')
     line4b, = ax4.plot([], [],color='r')
     line4c, = ax4.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')
     
     ax10=fig.add_subplot(4,7,10,polar=True)
-    ax10.set_ylim(0,1)
+    ax10.set_ylim(0,y_lim)
     line10a, = ax10.plot([], [], color='b')
     line10b, = ax10.plot([], [],color='r')
     line10c, = ax10.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')    
     
     ax11=fig.add_subplot(4,7,11,polar=True)
-    ax11.set_ylim(0,1)
+    ax11.set_ylim(0,y_lim)
     line11a, = ax11.plot([], [], color='b')
     line11b, = ax11.plot([], [],color='r')
     line11c, = ax11.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     
     ax12=fig.add_subplot(4,7,12,polar=True)
-    ax12.set_ylim(0,1)
+    ax12.set_ylim(0,y_lim)
     line12a, = ax12.plot([], [], color='b')
     line12b, = ax12.plot([], [],color='r')
     line12c, = ax12.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     
     ax16=fig.add_subplot(4,7,16,polar=True)
-    ax16.set_ylim(0,1)
+    ax16.set_ylim(0,y_lim)
     line16a, = ax16.plot([], [], color='b')
     line16b, = ax16.plot([], [],color='r')
     line16c, = ax16.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
 
     ax17=fig.add_subplot(4,7,17,polar=True)
-    ax17.set_ylim(0,1)
+    ax17.set_ylim(0,y_lim)
     line17a, = ax17.plot([], [], color='b')
     line17b, = ax17.plot([], [],color='r')
     line17c, = ax17.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     
     ax18=fig.add_subplot(4,7,18,polar=True)
-    ax18.set_ylim(0,1)
+    ax18.set_ylim(0,y_lim)
     line18a, = ax18.plot([], [], color='b')
     line18b, = ax18.plot([], [],color='r')
     line18c, = ax18.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
 
     ax19=fig.add_subplot(4,7,19,polar=True)
-    ax19.set_ylim(0,1)
+    ax19.set_ylim(0,y_lim)
     line19a, = ax19.plot([], [], color='b')
     line19b, = ax19.plot([], [],color='r')
     line19c, = ax19.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
 
     ax20=fig.add_subplot(4,7,20,polar=True)
-    ax20.set_ylim(0,1)
+    ax20.set_ylim(0,y_lim)
     line20a, = ax20.plot([], [], color='b')
     line20b, = ax20.plot([], [],color='r')
     line20c, = ax20.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
 
     ax22=fig.add_subplot(4,7,22,polar=True)
-    ax22.set_ylim(0,1)
+    ax22.set_ylim(0,y_lim)
     line22a, = ax22.plot([], [], color='b')
     line22b, = ax22.plot([], [],color='r')
     line22c, = ax22.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     plt.xlabel('m=-3')
 
     ax23=fig.add_subplot(4,7,23,polar=True)
-    ax23.set_ylim(0,1)
+    ax23.set_ylim(0,y_lim)
     line23a, = ax23.plot([], [], color='b')
     line23b, = ax23.plot([], [],color='r')
     line23c, = ax23.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     plt.xlabel('m=-2')
 
     ax24=fig.add_subplot(4,7,24,polar=True)
-    ax24.set_ylim(0,1)
+    ax24.set_ylim(0,y_lim)
     line24a, = ax24.plot([], [], color='b')
     line24b, = ax24.plot([], [],color='r')
     line24c, = ax24.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     plt.xlabel('m=-1')
 
     ax25=fig.add_subplot(4,7,25,polar=True)
-    ax25.set_ylim(0,1)
+    ax25.set_ylim(0,y_lim)
     line25a, = ax25.plot([], [], color='b')
     line25b, = ax25.plot([], [],color='r')
     line25c, = ax25.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     plt.xlabel('m=0')
 
     ax26=fig.add_subplot(4,7,26,polar=True)
-    ax26.set_ylim(0,1)
+    ax26.set_ylim(0,y_lim)
     line26a, = ax26.plot([], [], color='b')
     line26b, = ax26.plot([], [],color='r')
     line26c, = ax26.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     plt.xlabel('m=1')
 
     ax27=fig.add_subplot(4,7,27,polar=True)
-    ax27.set_ylim(0,1)
+    ax27.set_ylim(0,y_lim)
     line27a, = ax27.plot([], [], color='b')
     line27b, = ax27.plot([], [],color='r')
     line27c, = ax27.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
     plt.xlabel('m=2')
     
     ax28=fig.add_subplot(4,7,28,polar=True)
-    ax28.set_ylim(0,1)
+    ax28.set_ylim(0,y_lim)
     line28a, = ax28.plot([], [], color='b')
     line28b, = ax28.plot([], [],color='r')
     line28c, = ax28.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
@@ -452,8 +468,8 @@ def plotPointSourceMoving(step=100,theta=0,theta_s=0):
     # animation function.  This is called sequentially
     def animate(i):
         global phi_s
-        phi_s =2*pi*i/500 
-        source_position=1
+        phi_s =2*pi*i/250 
+        source_position=4
 
         X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
         V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
@@ -538,17 +554,18 @@ def plotPointSourceMoving(step=100,theta=0,theta_s=0):
     
     return anim #in order to work from ipython
     
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect of a moving point source on all added spherical harmonics, in a horizontal plane
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-def plotPointSourceMovingAll(step=1000,theta=0,theta_s=0):
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+def plotPointSourceMovingFirst(step=1000,theta=0):
     """
-    2D polar plot of the effect of a point sound source, moving around phi, in the addition of all spherical harmonics
-    
+    plot a polar representation in the horizontal plane of a circle-moving puntual source,
+    encoded with only first order 3D spherical harmonics
+    - narrow line: individual components
+    - broad line: addition of all components 
+
     Parameters:
         step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
-        theta_s: source's elevation angle 
+        theta: elevation angle of the plane (default:0 rads - horizontal plane)
     """
     
     #adapted from http://matplotlib.org/1.3.1/examples/animation/simple_anim.html
@@ -557,239 +574,19 @@ def plotPointSourceMovingAll(step=1000,theta=0,theta_s=0):
     phi=arange(0,2*pi,2*pi/step)
     theta=ones(step)*theta
     phi_s=0
+    theta_s=0
     
     #encoding values
-    W=              nullOrder(theta,phi)
     X,Y,Z=          firstOrder(theta,phi)
-    V,T,R,S,U=      secondOrder(theta,phi)
-    Q,O,M,K,L,N,P=  thirdOrder(theta,phi)
     
     #source coefficients
-    W_s=                            nullOrder(theta_s,phi_s)
-    X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
-    V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
-    Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
+    X_s,Y_s,Z_s=   firstOrder(theta_s,phi_s)
 
     # First set up the figure, the axis, and the plot element we want to animate
 
     fig = plt.figure(figsize=(20,10))
     ax = plt.axes(polar=True)
-    ax.set_ylim(0,2)
-    line_a, = ax.plot([], [], color='b')
-    line_b, = ax.plot([], [],color='r')
-    line_c, = ax.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')
-    
-
-    # initialization function: plot the background of each frame
-    def init():
-        #initialize empty lines: line_a positive values, line_b negative values, line_c point source
-        line_a.set_data([], [])
-        line_b.set_data([], [])
-        line_c.set_data([], [])
-
-    
-    # animation function.  This is called sequentially
-    def animate(i):
-        global phi_s
-        phi_s =2*pi*i/200 
-        source_position=2
-
-        X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
-        V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
-        Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
-    
-        all=(W*W_s)+(X*X_s)+(Y*Y_s)+(Z*Z_s)+(V*V_s)+(T*T_s)+(R*R_s)+(S*S_s)+(U*U_s)+(Q*Q_s)+(O*O_s)+(M*M_s)+(K*K_s)+(L*L_s)+(N*N_s)+(P*P_s)
-
-        all_pos,all_neg=separateSign(all)
-        line_a.set_data(phi, all_pos)
-        line_b.set_data(phi, all_neg)
-        line_c.set_data([phi_s],[source_position]) 
-
-
-        return line_a,line_b,line_c,
-        
-    
-    # call the animator.  blit=True means only re-draw the parts that have changed.
-    # interval= time between calculations in ms
-    # frames=  each frames iterations, start again
-    anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                   frames=200, interval=20, blit=True)
-
-    
-    return anim
-    
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect of a moving point source on all added spherical harmonics, in a horizontal plane
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-def plotPointSourceMovingAll2(step=1000,theta=0,theta_s=0):
-    """
-    2D polar plot of the effect of a point sound source, moving around phi, in the addition of all spherical harmonics
-    
-    Parameters:
-        step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
-        theta_s: source's elevation angle 
-    """
-    
-    #adapted from http://matplotlib.org/1.3.1/examples/animation/simple_anim.html
-    
-    #plot parameters
-    phi=arange(0,2*pi,2*pi/step)
-    theta=ones(step)*theta
-    phi_s=0
-    
-    #encoding values
-    W=              nullOrder(theta,phi)
-    X,Y,Z=          firstOrder(theta,phi)
-    V,T,R,S,U=      secondOrder(theta,phi)
-    Q,O,M,K,L,N,P=  thirdOrder(theta,phi)
-    
-    #source coefficients
-    W_s=                            nullOrder(theta_s,phi_s)
-    X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
-    V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
-    Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
-
-    # First set up the figure, the axis, and the plot element we want to animate
-
-    fig = plt.figure(figsize=(20,10))
-    
-    ax1= fig.add_subplot(221,polar=True)
-    ax1.set_ylim(0,2)
-    line1a, = ax1.plot([], [], color='b')
-    line1b, = ax1.plot([], [],color='r')
-    line1c, = ax1.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')
-    
-    
-    ax2=fig.add_subplot(222,polar=True)
-    ax2.set_ylim(0,2)
-    line2a, = ax2.plot([], [], color='b')
-    line2b, = ax2.plot([], [],color='r')
-    line2c, = ax2.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')
-    
-    ax3=fig.add_subplot(223,polar=True)
-    ax3.set_ylim(0,2)
-    line3a, = ax3.plot([], [], color='b')
-    line3b, = ax3.plot([], [],color='r')
-    line3c, = ax3.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')    
-    
-    ax4=fig.add_subplot(224,polar=True)
-    ax4.set_ylim(0,2)
-    line4a, = ax4.plot([], [], color='b')
-    line4b, = ax4.plot([], [],color='r')
-    line4c, = ax4.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
-     
-    
-
-    # initialization function: plot the background of each frame
-    def init():
-        #initialize empty lines: line_a positive values, line_b negative values, line_c point source
-        line1a.set_data([], [])
-        line1b.set_data([], [])
-        line1c.set_data([], [])
-        
-        line2a.set_data([], [])
-        line2b.set_data([], [])
-        line2c.set_data([], [])
-
-        line3a.set_data([], [])
-        line3b.set_data([], [])
-        line3c.set_data([], [])
-        
-        line4a.set_data([], [])
-        line4b.set_data([], [])
-        line4c.set_data([], [])
-
-    
-    # animation function.  This is called sequentially
-    def animate(i):
-        global phi_s
-        phi_s =2*pi*i/200 
-        source_position=2
-
-        X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
-        V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
-        Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
-        
-        zero=(W*W_s)
-        first=(X*X_s)+(Y*Y_s)+(Z*Z_s)
-        second=(V*V_s)+(T*T_s)+(R*R_s)+(S*S_s)+(U*U_s)
-        third=(Q*Q_s)+(O*O_s)+(M*M_s)+(K*K_s)+(L*L_s)+(N*N_s)+(P*P_s)
-    
-        all=zero+first+second+third
-
-        
-        first_pos,first_neg=separateSign(first)
-        line1a.set_data(phi, first_pos)
-        line1b.set_data(phi, first_neg)
-        line1c.set_data([phi_s], [source_position])
-        
-        second_pos,second_neg=separateSign(second)
-        line2a.set_data(phi, second_pos)
-        line2b.set_data(phi, second_neg)
-        line2c.set_data([phi_s], [source_position])
-
-        third_pos,third_neg=separateSign(third)
-        line3a.set_data(phi, third_pos)
-        line3b.set_data(phi, third_neg)
-        line3c.set_data([phi_s], [source_position])
-        
-        all_pos,all_neg=separateSign(all)
-        line4a.set_data(phi, all_pos)
-        line4b.set_data(phi, all_neg)
-        line4c.set_data([phi_s],[source_position]) 
-
-
-        return line1a,line1b,line1c, line2a,line2b,line2c, line3a,line3b,line3c, line4a,line4b,line4c
-        
-    
-    # call the animator.  blit=True means only re-draw the parts that have changed.
-    # interval= time between calculations in ms
-    # frames=  each frames iterations, start again
-    anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                   frames=200, interval=20, blit=True)
-
-    
-    return anim
-    
-    
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect of a moving point source on all added spherical harmonics, in a horizontal plane
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-def plotPointSourceMovingFirst(step=1000,theta=0,theta_s=0):
-    """
-    2D polar plot of the effect of a point sound source, moving around phi, in the addition of all spherical harmonics
-    
-    Parameters:
-        step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
-        theta_s: source's elevation angle 
-    """
-    
-    #adapted from http://matplotlib.org/1.3.1/examples/animation/simple_anim.html
-    
-    #plot parameters
-    phi=arange(0,2*pi,2*pi/step)
-    theta=ones(step)*theta
-    phi_s=0
-    
-    #encoding values
-    W=              nullOrder(theta,phi)
-    X,Y,Z=          firstOrder(theta,phi)
-    V,T,R,S,U=      secondOrder(theta,phi)
-    Q,O,M,K,L,N,P=  thirdOrder(theta,phi)
-    
-    #source coefficients
-    W_s=                            nullOrder(theta_s,phi_s)
-    X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
-    V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
-    Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
-
-    # First set up the figure, the axis, and the plot element we want to animate
-
-    fig = plt.figure(figsize=(20,10))
-    ax = plt.axes(polar=True)
-    ax.set_ylim(0,0.5)
+    ax.set_ylim(0,5)
     
     lineXa, = ax.plot([], [], color='b')
     lineXb, = ax.plot([], [], color='r')
@@ -817,7 +614,7 @@ def plotPointSourceMovingFirst(step=1000,theta=0,theta_s=0):
     def animate(i):
         global phi_s
         phi_s =2*pi*i/200 
-        source_position=0.5
+        source_position=4
 
         X_s,Y_s,Z_s=firstOrder(theta_s,phi_s)
         
@@ -829,7 +626,7 @@ def plotPointSourceMovingFirst(step=1000,theta=0,theta_s=0):
         y_pos,y_neg=separateSign(Y*Y_s)
         lineYa.set_data(phi, y_pos)
         lineYb.set_data(phi, y_neg)
-        first_pos,first_neg=separateSign(first)
+        first_pos,first_neg=separateSign(first) 
         line1a.set_data(phi,first_pos)
         line1b.set_data(phi,first_neg)
         
@@ -849,17 +646,17 @@ def plotPointSourceMovingFirst(step=1000,theta=0,theta_s=0):
     return anim
     
     
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect of a moving point source on all added spherical harmonics, in a horizontal plane
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-def plotPointSourceMovingSecond(step=1000,theta=0,theta_s=0):
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+def plotPointSourceMovingSecond(step=1000,theta=0):
     """
-    2D polar plot of the effect of a point sound source, moving around phi, in the addition of all spherical harmonics
-    
+    plot a polar representation in the horizontal plane of a circle-moving puntual source,
+    encoded with only second order 3D spherical harmonics
+    - narrow line: individual components
+    - broad line: addition of all components 
+
     Parameters:
         step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
-        theta_s: source's elevation angle 
+        theta: elevation angle of the plane (default:0 rads - horizontal plane)
     """
     
     #adapted from http://matplotlib.org/1.3.1/examples/animation/simple_anim.html
@@ -868,24 +665,19 @@ def plotPointSourceMovingSecond(step=1000,theta=0,theta_s=0):
     phi=arange(0,2*pi,2*pi/step)
     theta=ones(step)*theta
     phi_s=0
+    theta_s=0
     
     #encoding values
-    W=              nullOrder(theta,phi)
-    X,Y,Z=          firstOrder(theta,phi)
     V,T,R,S,U=      secondOrder(theta,phi)
-    Q,O,M,K,L,N,P=  thirdOrder(theta,phi)
     
     #source coefficients
-    W_s=                            nullOrder(theta_s,phi_s)
-    X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
-    V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
-    Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
+    V_s,T_s,R_s,S_s,U_s = secondOrder(theta_s,phi_s)
 
     # First set up the figure, the axis, and the plot element we want to animate
 
     fig = plt.figure(figsize=(20,10))
     ax = plt.axes(polar=True)
-    ax.set_ylim(0,0.3)
+    ax.set_ylim(0,7)
     
     lineVa, = ax.plot([], [], color='b')
     lineVb, = ax.plot([], [], color='r')
@@ -917,10 +709,11 @@ def plotPointSourceMovingSecond(step=1000,theta=0,theta_s=0):
     def animate(i):
         global phi_s
         phi_s =2*pi*i/200 
-        source_position=0.3
+        source_position=6
 
         V_s,T_s,R_s,S_s,U_s = secondOrder(theta_s,phi_s)
         
+        # we take only non-zero coefficients
         second=(V*V_s)+(R*R_s)+(U*U_s)
     
         v_pos,v_neg=separateSign(V*V_s)
@@ -932,7 +725,7 @@ def plotPointSourceMovingSecond(step=1000,theta=0,theta_s=0):
         u_pos,u_neg=separateSign(U*U_s)
         lineUa.set_data(phi, u_pos)
         lineUb.set_data(phi, u_neg)        
-        second_pos,second_neg=separateSign(second)
+        second_pos,second_neg=separateSign(second) 
         line2a.set_data(phi,second_pos)
         line2b.set_data(phi,second_neg)
         
@@ -953,17 +746,18 @@ def plotPointSourceMovingSecond(step=1000,theta=0,theta_s=0):
     
     
     
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect of a moving point source on all added spherical harmonics, in a horizontal plane
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-def plotPointSourceMovingThird(step=1000,theta=0,theta_s=0):
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+def plotPointSourceMovingThird(step=1000,theta=0):
     """
-    2D polar plot of the effect of a point sound source, moving around phi, in the addition of all spherical harmonics
-    
+    plot a polar representation in the horizontal plane of a circle-moving puntual source,
+    encoded with only third order 3D spherical harmonics
+    - narrow line: individual components
+    - broad line: addition of all components 
+
     Parameters:
         step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
-        theta_s: source's elevation angle 
+        theta: elevation angle of the plane (default:0 rads - horizontal plane)
     """
     
     #adapted from http://matplotlib.org/1.3.1/examples/animation/simple_anim.html
@@ -971,25 +765,20 @@ def plotPointSourceMovingThird(step=1000,theta=0,theta_s=0):
     #plot parameters
     phi=arange(0,2*pi,2*pi/step)
     theta=ones(step)*theta
-    phi_s=0
+    phi_s=0 
+    theta_s=0
     
     #encoding values
-    W=              nullOrder(theta,phi)
-    X,Y,Z=          firstOrder(theta,phi)
-    V,T,R,S,U=      secondOrder(theta,phi)
     Q,O,M,K,L,N,P=  thirdOrder(theta,phi)
     
     #source coefficients
-    W_s=                            nullOrder(theta_s,phi_s)
-    X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
-    V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
-    Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
+    Q_s,O_s,M_s,K_s,L_s,N_s,P_s = thirdOrder(theta_s,phi_s)
 
     # First set up the figure, the axis, and the plot element we want to animate
 
     fig = plt.figure(figsize=(20,10))
     ax = plt.axes(polar=True)
-    ax.set_ylim(0,0.2)
+    ax.set_ylim(0,9)
     
     lineQa, = ax.plot([], [], color='b')
     lineQb, = ax.plot([], [], color='r')
@@ -1025,11 +814,11 @@ def plotPointSourceMovingThird(step=1000,theta=0,theta_s=0):
     def animate(i):
         global phi_s
         phi_s =2*pi*i/200 
-        source_position=0.2
+        source_position=8
 
         Q_s,O_s,M_s,K_s,L_s,N_s,P_s = thirdOrder(theta_s,phi_s)
-        
-        third=(Q*Q_s)+(O*O_s)+(M*M_s)+(K*K_s)+(L*L_s)+(N*N_s)+(P*P_s)
+        # we take only non-zero coefficients
+        third=(Q*Q_s)+(M*M_s)+(L*L_s)+(P*P_s)
     
         q_pos,q_neg=separateSign(Q*Q_s)
         lineQa.set_data(phi, q_pos)
@@ -1043,7 +832,7 @@ def plotPointSourceMovingThird(step=1000,theta=0,theta_s=0):
         p_pos,p_neg=separateSign(P*P_s)
         linePa.set_data(phi, p_pos)
         linePb.set_data(phi, p_neg)
-        third_pos,third_neg=separateSign(third)
+        third_pos,third_neg=separateSign(third) #already normalized
         line3a.set_data(phi,third_pos)
         line3b.set_data(phi,third_neg)
         
@@ -1061,24 +850,28 @@ def plotPointSourceMovingThird(step=1000,theta=0,theta_s=0):
 
     
     return anim    
-    
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function to plot the effect in virtual microphone's directivity by increasing ambisonics level 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-def plotPointSourceLinear(step=1000,theta=0,theta_s=0,phi_s=0):
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+def plotPointSourceMovingDirectivity(step=1000,theta=0):
     """
-    plot of directivity from a point source, over different ambisonics levels
+    plot a polar representation in the horizontal plane of a circle-moving puntual source,
+    encoded with up to third order 3D spherical harmonics
     
+    each plot is normalized by the number of channels
+
     Parameters:
         step: number of points to calculate (default:1000)
-        theta: elevation angle to calculate (default:0 rads - horizontal plane)
-        theta_s: source's elevation angle 
-        phi_s: source's azimuth angle
+        theta: elevation angle of the plane (default:0 rads - horizontal plane)
     """
-        
+    
+    #adapted from http://matplotlib.org/1.3.1/examples/animation/simple_anim.html
+    
     #plot parameters
-    phi=arange(-pi,pi,2*pi/step)
+    phi=arange(0,2*pi,2*pi/step)
     theta=ones(step)*theta
+    phi_s=0
+    theta_s=0
     
     #encoding values
     W=              nullOrder(theta,phi)
@@ -1091,20 +884,159 @@ def plotPointSourceLinear(step=1000,theta=0,theta_s=0,phi_s=0):
     X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
     V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
     Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
+
+    # First set up the figure, the axis, and the plot element we want to animate
+
+    fig = plt.figure(figsize=(20,10))
+    
+    ax1= fig.add_subplot(221,polar=True)
+    ax1.set_ylim(0,1.2)
+    ax1.set_xlabel('m=0')
+    line1a, = ax1.plot([], [], color='b')
+    line1b, = ax1.plot([], [],color='r')
+    line1c, = ax1.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')
+    
+    
+    ax2=fig.add_subplot(222,polar=True)
+    ax2.set_ylim(0,1.2)
+    ax2.set_xlabel('m=1')
+    line2a, = ax2.plot([], [], color='b')
+    line2b, = ax2.plot([], [],color='r')
+    line2c, = ax2.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')
+    
+    ax3=fig.add_subplot(223,polar=True)
+    ax3.set_ylim(0,1.2)
+    ax3.set_xlabel('m=2')
+    line3a, = ax3.plot([], [], color='b')
+    line3b, = ax3.plot([], [],color='r')
+    line3c, = ax3.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')    
+    
+    ax4=fig.add_subplot(224,polar=True)
+    ax4.set_ylim(0,1.2)
+    ax4.set_xlabel('m=3')
+    line4a, = ax4.plot([], [], color='b')
+    line4b, = ax4.plot([], [],color='r')
+    line4c, = ax4.plot([], [],color='g',lw=5,linestyle='steps--',marker='o')   
+     
+    
+
+    # initialization function: plot the background of each frame
+    def init():
+        #initialize empty lines: line_a positive values, line_b negative values, line_c point source
+        line1a.set_data([], [])
+        line1b.set_data([], [])
+        line1c.set_data([], [])
+        
+        line2a.set_data([], [])
+        line2b.set_data([], [])
+        line2c.set_data([], [])
+
+        line3a.set_data([], [])
+        line3b.set_data([], [])
+        line3c.set_data([], [])
+        
+        line4a.set_data([], [])
+        line4b.set_data([], [])
+        line4c.set_data([], [])
+
+    
+    # animation function.  This is called sequentially
+    def animate(i):
+        global phi_s
+        phi_s =2*pi*i/200 
+        source_position=1
+
+        X_s,Y_s,Z_s=                    firstOrder(theta_s,phi_s)
+        V_s,T_s,R_s,S_s,U_s=            secondOrder(theta_s,phi_s)
+        Q_s,O_s,M_s,K_s,L_s,N_s,P_s=    thirdOrder(theta_s,phi_s)
+        
+        zero=(W*W_s)
+        first=(zero+(X*X_s)+(Y*Y_s)+(Z*Z_s))
+        second=(first+(V*V_s)+(T*T_s)+(R*R_s)+(S*S_s)+(U*U_s))
+        third=(second+(Q*Q_s)+(O*O_s)+(M*M_s)+(K*K_s)+(L*L_s)+(N*N_s)+(P*P_s))
+
+        # normalize each decoding by the number of channels
+        first_pos,first_neg=separateSign(zero/1)
+        line1a.set_data(phi, first_pos)
+        line1b.set_data(phi, first_neg)
+        line1c.set_data([phi_s], [source_position])
+        
+        second_pos,second_neg=separateSign(first/4)
+        line2a.set_data(phi, second_pos)
+        line2b.set_data(phi, second_neg)
+        line2c.set_data([phi_s], [source_position])
+
+        third_pos,third_neg=separateSign(second/9)
+        line3a.set_data(phi, third_pos)
+        line3b.set_data(phi, third_neg)
+        line3c.set_data([phi_s], [source_position])
+        
+        all_pos,all_neg=separateSign(third/16)
+        line4a.set_data(phi, all_pos)
+        line4b.set_data(phi, all_neg)
+        line4c.set_data([phi_s],[source_position]) 
+
+
+        return line1a,line1b,line1c, line2a,line2b,line2c, line3a,line3b,line3c, line4a,line4b,line4c
+        
+    
+    # call the animator.  blit=True means only re-draw the parts that have changed.
+    # interval= time between calculations in ms
+    # frames=  each frames iterations, start again
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                   frames=200, interval=20, blit=True)
+
+    
+    return anim
+    
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+def plotPointSourceDirectivity(step=1000):
+    """
+    linear plot of directivity from a point source at (phi=0, theta=0) over different ambisonics levels
+    
+    each plot is normalized by the number of channels
+    
+    Parameters:
+        step: number of points to calculate (default:1000)
+    """
+        
+    #plot parameters
+    phi=arange(-pi,pi,2*pi/step)
+    theta=zeros(step)
+    phi_s=0
+    theta_s=0
+    
+    #encoding values
+    W=              nullOrder(theta,phi)
+    X,Y,Z=          firstOrder(theta,phi)
+    V,T,R,S,U=      secondOrder(theta,phi)
+    Q,O,M,K,L,N,P=  thirdOrder(theta,phi)
+    
+    #source coefficients
+    W_s =                            nullOrder(theta_s,phi_s)
+    X_s,Y_s,Z_s =                    firstOrder(theta_s,phi_s)
+    V_s,T_s,R_s,S_s,U_s =            secondOrder(theta_s,phi_s)
+    Q_s,O_s,M_s,K_s,L_s,N_s,P_s =    thirdOrder(theta_s,phi_s)
     
     #coefficient times encoding functions
-    zero=W*W_s
-    first=(X*X_s)+(Y*Y_s)+(Z*Z_s)
-    second=(V*V_s)+(T*T_s)+(R*R_s)+(S*S_s)+(U*U_s)
-    third=(Q*Q_s)+(O*O_s)+(M*M_s)+(K*K_s)+(L*L_s)+(N*N_s)+(P*P_s)
+    zero =       (W*W_s)
+    first =      zero+(X*X_s)+(Y*Y_s)+(Z*Z_s)
+    second =     first+(V*V_s)+(T*T_s)+(R*R_s)+(S*S_s)+(U*U_s)
+    third =      second+(Q*Q_s)+(O*O_s)+(M*M_s)+(K*K_s)+(L*L_s)+(N*N_s)+(P*P_s)
 
-    #plot
+    # normalize each decoding by the number of channels
     plt.figure()
+    plt.xlabel('azimuth (rad)')
+    plt.ylabel('level')
+    plt.xlim(-pi,pi)
+    plt.title('Directivity of a point source encoding with different Ambisonic levels')
     plt.grid()
-    plt.plot(phi,zero)
-    plt.plot(phi,zero+first)
-    plt.plot(phi,zero+first+second)
-    plt.plot(phi,zero+first+second+third)
+    p0,=plt.plot(phi,zero/1)
+    p1,=plt.plot(phi,first/4)
+    p2,=plt.plot(phi,second/9)
+    p3,=plt.plot(phi,third/16)
+    plt.legend([p0,p1,p2,p3],['m=0','m=1','m=2','m=3'])
     
 
     return   
