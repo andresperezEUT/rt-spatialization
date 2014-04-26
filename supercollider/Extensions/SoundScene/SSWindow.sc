@@ -74,16 +74,15 @@ SSWindow : RedQWindow {
 		//...until here
 
 		zoomSlider=Slider(this, Rect(0, 0, widthSlider, argBounds.height)).value_(0.5);
-		zoomSlider.action = {zoom=zoomSlider.value.linlin(0,1,minZoom,maxZoom)};
+		zoomSlider.action = {zoom=zoomSlider.value.linlin(0,1,minZoom,maxZoom); this.refresh;};
 
 
-		dim = dimVector ? SSVector[100,100,100];
+		dim = dimVector ? Cartesian(100,100,100);
 
 	}
 
 
 	draw {|func| userView.drawFunc= {
-		// a = Slider(w, Rect(20, 60, 150, 20));
 		Pen.translate(this.bounds.width/2,this.bounds.height/2);
 		Pen.scale(zoom,zoom);
 		func.value();

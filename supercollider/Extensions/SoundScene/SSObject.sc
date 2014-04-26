@@ -45,14 +45,15 @@ SSObject : RedObject {
 
 		^super.newCopyArgs(
 			world ?? {SSWorld.new},
-			loc ?? {SSVector.clear},
-			vel ?? {SSVector.clear},
-			accel ?? {SSVector.clear},
+			loc !? {if (loc.isArray) {Cartesian.fromArray(loc)} {loc} } ?? {Cartesian(0,0,0)},
+			vel !? {if (vel.isArray) {Cartesian.fromArray(vel)} {vel} } ?? {Cartesian(0,0,0)},
+			accel !? {if (accel.isArray) {Cartesian.fromArray(accel)} {accel} } ?? {Cartesian(0,0,0)},
 			mass ? 1,
 			size ? 1
-		//change init function
+			//change init function
 		).initSSObject(shape, name, channel)
 	}
+
 
 	initSSObject { |myshape, myname, mychannel|
 
@@ -83,35 +84,93 @@ SSObject : RedObject {
 		this.initRedObject;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////
+	// getter / setter methods
 
-	locSph { //spherical coordinates
+	// private:: auto-casting to Cartesian
+	setValue { |value,type=\cartesian|
+
+		if (value.isArray) {
+			if (type==\cartesian) {
+				value=Cartesian.fromArray(value)
+			};
+			if (type==\spherical) {
+				value=Spherical.fromArray(value)
+			};
+		}
+
+		^value.asCartesian;
+
+	}
+
+	///////////////// loc
+
+	loc_ { |newLoc|
+		loc=this.setValue(newLoc);
+	}
+
+	locSph {
 		^loc.asSpherical;
 	}
 
-	locSph_ { |sph|
-		loc=sph.asCartesian;
+	locSph_ {|newLocSph|
+		loc=this.setValue(newLocSph,\spherical);
 	}
 
+	///////////////// vel
+
+	vel_ { |newVel|
+		vel=this.setValue(newVel);
+	}
+
+	velSph {
+		^vel.asSpherical;
+	}
+
+	velSph_ {|newVelSph|
+		vel=this.setValue(newVelSph,\spherical);
+	}
+
+	///////////////// accel
+
+	accel_ { |newAccel|
+		accel=this.setValue(newAccel);
+	}
+
+	accelSph {
+		^accel.asSpherical;
+	}
+
+	accelSph_ {|newAccelSph|
+		accel=this.setValue(newAccelSph,\spherical);
+	}
+
+
+	/////////////////////////////////////////////////////////////////////////////////
 	//set
 	setMovement { |type=\static ... args|
 		movement = switch (type)
 		{\static} {Static.new(this)}
-		{\orbit} {Orbit.new(this,args)};
+		{\rect}   {RectMov.new(this)}
+		{\orbit}  {Orbit.new(this,args)};
 
 	}
 
 
 	update {
-		vel=movement.next;
+		movement.next;
+		// vel=movement.next;
 		// super.update;
-		if (movement.type == \orbit) {
+
+
+/*		if (movement.type == \orbit) {
 
 
 		} {
 			vel= (vel+accel).limit(world.maxVel);
 			loc= loc+vel;
 			accel= 0;
-		}
+		}*/
 	}
 
 }

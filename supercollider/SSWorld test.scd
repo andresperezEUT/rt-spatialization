@@ -1,22 +1,55 @@
 (
-~world= SSWorld(SSVector[20,20,10], SSVector.clear, 200, 0).showView; //dim,grav,maxvel,damp
+~world= SSWorld([20,10,10], [0,0,0], 200, 0).showView; //dim,grav,maxvel,damp
 
-o=SSObject(~world,SSVector.clear,SSVector[0, 0,0], 0, 9,\point)/*.setMovement(\orbit)*/; //world,loc,vel,acc,mass,size,shape
-o=SSObject(~world,SSVector[2,2,0],SSVector[0, 0,0], 0, 1, 0.1,\point,channel:1)
+o=SSObject(~world,[0,0,0],[0,0,0], 0, 9,\point)/*.setMovement(\orbit)*/; //world,loc,vel,acc,mass,size,shape
+o=SSObject(~world,[1,1,0],[0,0,0], 0, 1, 0.1,\point,channel:1)
 )
 
+~world.dim
+~world.gravity
 ~world.objects.at(1).loc_(Spherical(1,0,0).asCartesian)
 ~world.objects.at(1).loc_(SVector)
 pixelSize
 
+o.vel
+o.loc_(Cartesian(-4.1,0,0))
+o.loc
+~world.contains(o)
+~world.contain(o)
+a=Spherical(1,0,0)
+a.asCartesian
+
+o.locSph.x
+o.loc
+
+o.velSph
+o.vel
+
+o.vel_([0,1,0])
+o.locSph_([1,pi/2,-pi/4])
 o.size_(0.1)
 
-o.loc_(SSVector[200,-200,0])
+o.loc_(Cartesian(1,0,0))
 o.class
 o.world.center
 o.movement.object.loc
 
-o.setMovement(\orbit,0.1,\lev)
+
+o.movement.next
+o.movement.taccel=0.1;
+
+
+~world.damping_(0)
+o.setMovement(\rect)
+~world.update
+
+o.vel
+o.vel_([0.1,0.1,0])
+o.accel_([0.1,0.1,0])
+o.setMovement(\orbit,2)
+
+~world.stepFreq_(60)
+o.setMovement(\orbit,2pi,\lev)
 ~world.viewDiff=false
 ~world.aziDiff=1.degree2rad
 o.setMovement(\static)
@@ -39,7 +72,7 @@ r=Render.new;
 
 ~world.alwaysOnTop(true)
 
-~world.window.view.resize_(1)
+~world.window.refresh
 
 0.5.linlin(0,1,10,100)
 Font

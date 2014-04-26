@@ -58,8 +58,8 @@ SSWorld : RedWorld1 { //default with walls
 	*new {|dim, gravity, maxVel, damping, timeStep=60|
 
 		^super.newCopyArgs(
-			dim ?? {SSVector[300, 300, 300]},
-			gravity ?? {SSVector[0, 0.98, 0]},
+			dim !? {if (dim.isArray) {Cartesian.fromArray(dim)} {dim} } ?? {Cartesian(10,10,5)},
+			gravity !? {if (gravity.isArray) {Cartesian.fromArray(gravity)} {gravity} } ?? {Cartesian(0,0.98,0)},
 			maxVel ? 10,
 			damping ? 0.25
 		).initSSWorld(timeStep);
@@ -125,12 +125,50 @@ SSWorld : RedWorld1 { //default with walls
 		//SEND NEW_OBJECT AND POSITION MESSAGE
 		//TODO: DICCIONARIO CON LOS OBJETOS PARA MANEJARLOS POR NOMBRE!!!
 		address.sendMsg("/new",obj.channel);
-		address.sendMsg("/pos",obj.channel,obj.loc[0],obj.loc[1],obj.loc[2]);
+		address.sendMsg("/pos",obj.channel,obj.loc.x,obj.loc.y,obj.loc.z);
+
+
+		//refresh view
+		this.updateView;
 	}
+
+	contains {|ssObj|							//returns boolean if object inside world dim
+		var arrayDim=dim.asArray;
+		^ssObj.loc.any{ |l,i| l.abs > (arrayDim[i]/2) }.not
+	}
+
+	// wrap: toroidal world
+	/*	contain {|ssObj|
+	var arrayDim=dim.asArray;
+	if(ssObj.loc.any{ |l,i| l.abs > (arrayDim[i]/2) }) {
+	ssObj.loc= ssObj.loc%dim;
+	};
+	}*/
+
+	contain {|ssObj|
+		var arrayDim=dim.asArray;
+		var loc, vel;
+
+		loc=ssObj.loc.asArray;
+		vel=ssObj.vel.asArray;
+
+		loc.do{|l, i|
+			if( l.abs > (arrayDim[i]/2) ) {
+
+				vel.put(i,vel[1]*(1-damping).neg);
+				ssObj.vel_(vel);
+
+				loc.put(i,l.fold(arrayDim[i]/2.neg,arrayDim[i]/2));
+				ssObj.loc_(loc);
+
+			}
+		}
+	}
+
 
 	center {
 		// ^dim/2;
-		^SSVector.clear;
+		^Cartesian();
 	}
 
 	pause {
@@ -156,7 +194,7 @@ SSWorld : RedWorld1 { //default with walls
 				// lastPos=obj.loc;
 				lastPos=obj.regLoc;
 				lastO=lastPos-this.center; //position centerend around wold center
-				lastO=Cartesian(lastO[0],lastO[1],lastO[2]);
+				// lastO=Cartesian(lastO[0],lastO[1],lastO[2]); // already cartesian!
 				rLastO=lastO.rho; //automatic casting to cartesian, polar, spherical!!
 				aziLastO=lastO.theta;
 				eleLastO=lastO.phi;
@@ -170,7 +208,7 @@ SSWorld : RedWorld1 { //default with walls
 				// TODO: IMPLEMENT THIS COMPACT!!
 				newPos=obj.loc;
 				newO=newPos-this.center; //position centerend around wold center
-				newO=Cartesian(newO[0],newO[1],newO[2]);
+				//newO=Cartesian(newO[0],newO[1],newO[2]); // already cartesian!
 				rNewO=newO.rho; //automatic casting to cartesian, polar, spherical!!
 				aziNewO=newO.theta;
 				eleNewO=newO.phi;

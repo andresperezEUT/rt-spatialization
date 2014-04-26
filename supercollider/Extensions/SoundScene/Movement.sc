@@ -59,7 +59,27 @@ Static : Movement {
 	}
 
 	next {
-		^SSVector.clear;
+		// ^Cartesian();
+	}
+}
+
+RectMov : Movement {
+
+	*new { |object|
+		^super.new(object).initRect;
+	}
+
+	initRect {
+		type=\rect;
+
+	}
+
+	next {
+		var step=object.world.stepFreq;
+
+		object.vel_(object.vel+object.accel); /*.object.world.limit(world.maxVel)*/
+		object.loc_(object.loc+(object.vel/step));
+		object.accel_([0,0,0]);
 	}
 }
 
@@ -68,60 +88,37 @@ Static : Movement {
 Orbit : Movement {
 	// movimiento circular con respecto al centro
 	// TODO: ADD Z DIMENSION
-	// TODO: ADD VELOCITY MAGNITUDE
 	// TODO: PUT THIS AS AN OPTION...
 
-	var <>velMag;
-	var <>dir;
 
-	var angularVel,taccel;
+
+	var <>dir;
+	var <>angularVel=0;
+	var <>taccel=0;
 
 	*new { |object, args|
 		^super.new(object).initOrbit(args)
 	}
 
 	initOrbit { |args| // |velMag, dir|
-		velMag = args[0] ? 1;
 		angularVel = args[0] ? 1;
 		dir = args[1] ? \dex;
-		type=\orbits;
+		type=\orbit;
 	}
 
 	next {
-/*		var theta;
-		angularVel= angularVel+taccel*(1-world.damping); //no need to limit to maxVel as angular
-		theta=object.locSph.theta+angularVel;
-		object.locSph;
-		object.locSph_(object.locSph);
-		theta= theta+angularVel;
-		taccel= 0;*/
+		var step=object.world.stepFreq;
 
+		angularVel= angularVel+taccel*(1-object.world.damping); //no need to limit to maxVel as angular
+		taccel= 0;
 
-/*		//cartesian version
-		var pos, center;
-		var place, vectorR, vectorV, vel;
-		var vectorN;
-
-		pos=object.loc;
-		center=object.world.center;
-
-		place=SSVector[pos[0],pos[1],center[2]];
-
-		vectorR=place-center;
-
-		vectorV = switch (dir)
-		{\dex} {SSVector[vectorR[1],vectorR[0].neg,0]}  //dextrorotation: clockwise [y,-x]
-		{\lev} {SSVector[vectorR[1].neg,vectorR[0],0]}; //levorotation:   counter-clockwise [-y,x]
-
-		///////////////
-		// "******".postln;
-		vel=vectorV.normalize/*.postln*/;
-
-		vel=vel*velMag;
-
-		^vel;*/
-
-
+		//set new pos
+		//normalize respect real seconds
+		if (dir == \lev) {
+			object.locSph_(object.locSph.addAzimuth(angularVel/step));
+		} {
+			object.locSph_(object.locSph.addAzimuth(angularVel.neg/step));
+		};
 
 	}
 }

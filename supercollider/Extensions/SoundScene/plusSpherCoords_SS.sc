@@ -17,36 +17,62 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 //
-// plusRect_SS.sc
-// based on plusRect.sc from redUniverse quark
+// plusSpherical_SS.sc
 //
-// Custom implementation for central focal point
+// Some convenience methods for the class Spherical from Joseph Anderson
 //
 ////////////////////////////////////////////////////////////////////////////
 
-+Rect {
++Spherical {
 
+	// convenience methods for creation
 
-	//!!!TODO. clean up focal and scaling
-	*aboutSSVector {|vec, size, width, height, depth, s= 1, f= 0.75|
-		var x, y, z, ox, oy;
-		z= (depth-vec.z/(depth*s)).linlin(0, 1, f, 1);
-		x= vec.x*z;
-		y= vec.y*z;
-/*		ox= 1-z*(width*0.5)+x;
-		oy= 1-z*(height*0.5)+y;*/
-		^this.aboutPoint(Point(x, y), size*z.linlin(0, 1, 0.01, 1), size*z.linlin(0, 1, 0.01, 1))
+	*fromArray { |array|
+		^this.new(array@0,array@1,array@2)
 	}
 
-	*aboutSSObject {|obj, s= 1, f= 0.75|
-		^this.aboutSSVector(
-			obj.loc,
-			obj.size,
-			obj.world.dim.x,
-			obj.world.dim.y,
-			obj.world.dim.z,
-			s,
-			f
-		)
+	// not to confuse phi and theta due to different nomenclatures!
+
+	azimuth {
+		^theta;
 	}
+
+	azimuth_ { |angle|
+		theta=angle;
+	}
+
+	addAzimuth { |angle|
+		this.azimuth_(this.azimuth+angle)
+	}
+
+	elevation {
+		^phi;
+	}
+
+	elevation_ { |angle|
+		phi=angle;
+	}
+
+	addElevation { |angle|
+		this.elevation_(this.elevation+angle)
+	}
+
+
+}
+
++Cartesian {
+
+	// convenience methods for creation
+
+	*fromArray { |array|
+		^this.new(array@0,array@1,array@2)
+	}
+
+	// other useful stuff
+
+	any { | function |
+		this.asArray.do {|elem, i| if (function.value(elem, i)) { ^true } }
+		^false;
+	}
+
 }
