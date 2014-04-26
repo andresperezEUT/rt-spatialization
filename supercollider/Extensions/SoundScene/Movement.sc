@@ -32,6 +32,7 @@
 Movement {
 
 	var <>object; // a SS object
+	var <type;
 
 	*new { |object|
 		^super.new.initMovement(object)
@@ -49,6 +50,14 @@ Movement {
 
 Static : Movement {
 
+	*new { |object|
+		^super.new(object).initStatic;
+	}
+
+	initStatic {
+		type=\static;
+	}
+
 	next {
 		^SSVector.clear;
 	}
@@ -65,17 +74,30 @@ Orbit : Movement {
 	var <>velMag;
 	var <>dir;
 
+	var angularVel,taccel;
+
 	*new { |object, args|
 		^super.new(object).initOrbit(args)
 	}
 
 	initOrbit { |args| // |velMag, dir|
 		velMag = args[0] ? 1;
+		angularVel = args[0] ? 1;
 		dir = args[1] ? \dex;
+		type=\orbits;
 	}
 
 	next {
-		//cartesian version
+/*		var theta;
+		angularVel= angularVel+taccel*(1-world.damping); //no need to limit to maxVel as angular
+		theta=object.locSph.theta+angularVel;
+		object.locSph;
+		object.locSph_(object.locSph);
+		theta= theta+angularVel;
+		taccel= 0;*/
+
+
+/*		//cartesian version
 		var pos, center;
 		var place, vectorR, vectorV, vel;
 		var vectorN;
@@ -97,7 +119,7 @@ Orbit : Movement {
 
 		vel=vel*velMag;
 
-		^vel;
+		^vel;*/
 
 
 

@@ -59,7 +59,12 @@ SSObject : RedObject {
 		// var numNames;
 		regLoc=loc;
 
+		// if shape is a point give it a infinitesimal small value
 		shape = myshape ? \point;
+		if (shape == \point) {
+			size=0.05;
+		};
+
 		//channel = mychannel ? 0;
 		//name = myname ?? {(\track++channel).asSymbol};
 		channel=mychannel;
@@ -83,6 +88,10 @@ SSObject : RedObject {
 		^loc.asSpherical;
 	}
 
+	locSph_ { |sph|
+		loc=sph.asCartesian;
+	}
+
 	//set
 	setMovement { |type=\static ... args|
 		movement = switch (type)
@@ -93,10 +102,16 @@ SSObject : RedObject {
 
 
 	update {
-
 		vel=movement.next;
+		// super.update;
+		if (movement.type == \orbit) {
 
-		super.update;
+
+		} {
+			vel= (vel+accel).limit(world.maxVel);
+			loc= loc+vel;
+			accel= 0;
+		}
 	}
 
 }

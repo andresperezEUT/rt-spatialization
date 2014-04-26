@@ -38,6 +38,7 @@
 SSWorld : RedWorld1 { //default with walls
 
 	var time, <>stepFreq;
+
 	var <window;
 
 	var <>rDiff, <>aziDiff, <>eleDiff;
@@ -49,6 +50,10 @@ SSWorld : RedWorld1 { //default with walls
 	var <numObjects=0;
 
 	var <objectsID;
+
+	var <worldView;
+
+	var <>sweetSpotSize=2;
 
 	*new {|dim, gravity, maxVel, damping, timeStep=60|
 
@@ -72,80 +77,20 @@ SSWorld : RedWorld1 { //default with walls
 
 
 		//view
-/*		window= SSWindow("SS-WORLD", Rect(0,0,dim[0],dim[1]),dimVector:dim);*/
-		window= RedQWindow("SS-WORLD", Rect(0,0,dim[0],dim[1])).background_(Color.white);
-		window.draw{
+		window= SSWindow("SS-WORLD",bounds:Rect(100,100,500,500),dimVector:dim);
+		window.background_(Color.white);
+		window.alwaysOnTop_(true);
+		// window= RedQWindow("SS-WORLD", Rect(0,0,dim[0],dim[1])).background_(Color.white);
+		worldView=SSWorldView.new(this);
+		window.draw(worldView.draw);
 
 
-
-			Pen.translate(dim@0/2,dim@1/2,0);
-			Pen.strokeColor=Color.black;
-			Pen.alpha=1;
-/*			Pen.addArc((dim[0]/2)@(dim[1]/2),100,0,2pi);*/
-			// TODO: make the circle in 3d perspective!
-			// TODO: add circle independently of if there is any object (see this.update)
-			Pen.addArc(0@0,100,0,2pi);
-
-			/////////////////
-			// Pen.rotate(-pi/2,0,0);
-			/////////////////
-
-			//TODO: not create a new instance of SSObject for each draw! make a visual object instead
-
-			if (this.objects.size > 0 ) {
-				this.objects.do { |obj|
-
-					// mirroring!
-					var x=(obj.loc@1).neg;
-					var y=(obj.loc@0).neg;
-					var z=obj.loc@2;
-
-					var a,b;
-
-					var newObj;
-					newObj=obj.copy.loc_(SSVector[x,y,z]); //take care not to overwrite the actual object!!
-
-					Pen.alpha=1;
-					//write object name
-					Pen.stringAtPoint(newObj.name,Rect.aboutSSObject(newObj,f:0.75).rightBottom,Font("Helvetica", 12),Color.red);
-
-/*					Rect.aboutSSObject(newObj).rightBottom.postln;
-					Rect.aboutSSObject(newObj).leftBottom.postln;
-					Rect.aboutSSObject(newObj).rightTop.postln;
-					Rect.aboutSSObject(newObj).leftTop.postln;*/
-
-					// Pen.stringLeftJustIn(newObj.name,Rect.aboutSSObject(newObj),Font("Helvetica", 20),Color.red);
-					//draw object
-					Pen.strokeColor= Color.black;
-					Pen.strokeRect(Rect.aboutSSObject(newObj));
-					//draw shadow
-					Pen.fillColor= Color.gray;
-					Pen.alpha=0.5;
-					//--place the shadow at the bottom
-					Pen.fillRect(Rect.aboutSSObject(newObj.loc_(SSVector[x,y,dim@2])));
-					//draw line between the object and its shadow
-					//TODO: change names!
-					a=Rect.aboutSSObject(newObj.loc_(SSVector[x,y,z])).center;
-					b=Rect.aboutSSObject(newObj.loc_(SSVector[x,y,dim@2])).center;
-					Pen.line(a,b);
-					Pen.alpha=0.1;
-					Pen.stroke;
-
-				};
-			};
-
-			//undo transformations
-			// Pen.rotate(pi/2,0,0);
-			Pen.translate(dim@0,dim@1,0);
-		};
-		//
 		// task managing objects update and time passing
 		time=Task({
 			inf.do{
 				this.update;
 				stepFreq.reciprocal.wait;
 			}
-
 		}).start;
 
 		// from initRedWorld
@@ -231,7 +176,7 @@ SSWorld : RedWorld1 { //default with walls
 				eleNewO=newO.phi;
 
 				// compare variation!!
-/*				["last",aziLastO,eleLastO].postln;
+				/*				["last",aziLastO,eleLastO].postln;
 				["new",aziNewO,eleNewO].postln;
 				["rDif",abs(rNewO-rLastO)].postln;
 				["aziDif",abs(aziNewO-aziLastO)].postln;
@@ -302,6 +247,10 @@ SSWorld : RedWorld1 { //default with walls
 
 	hideView {
 		window.visible_(false)
+	}
+
+	alwaysOnTop { |bool|
+		window.alwaysOnTop_(bool);
 	}
 
 	////////////////////////////////////////
