@@ -33,6 +33,7 @@ Movement {
 
 	var <>object; // a SS object
 	var <type;
+	var <step;
 
 	*new { |object|
 		^super.new.initMovement(object)
@@ -40,6 +41,7 @@ Movement {
 
 	initMovement{ |myobject|
 		object=myobject;
+		step=object.world.stepFreq;
 	}
 
 	next {
@@ -59,28 +61,153 @@ Static : Movement {
 	}
 
 	next {
-		// ^Cartesian();
+		object.vel_([0,0,0]);
+		object.accel_([0,0,0]);
+		// "static".postln;
+		// ^[Cartesian.new,Cartesian.new,Cartesian.new];
 	}
 }
 
 RectMov : Movement {
+	/*
+	var vel;
+	var accel;*/
 
-	*new { |object|
-		^super.new(object).initRect;
+	*new { |object,args|
+		^super.new(object).initRect(args);
 	}
 
-	initRect {
+	initRect { |args|
+		/*		vel = args[0] ? Cartesian.new;
+		accel = args[1] ? Cartesian.new;*/
+
+		if (args.size>0) { object.addVel(args[0])};
+
 		type=\rect;
 
 	}
 
 	next {
 		var step=object.world.stepFreq;
+		var newLoc,newVel,newAccel;
 
 		object.vel_(object.vel+object.accel); /*.object.world.limit(world.maxVel)*/
 		object.loc_(object.loc+(object.vel/step));
 		object.accel_([0,0,0]);
+
+		/*		"***".postln;
+		object.vel.postln;
+		object.loc.postln;*/
+
+		/*		newVel=object.vel+object.accel;
+		newLoc=(object.loc+(object.vel/step));
+		newAccel=Cartesian[0,0,0];*/
+
+		/*		newVel=vel+accel;
+		newLoc=vel/step;
+		newAccel=Cartesian.new;*/
+
+		// ^[newLoc,newVel,newAccel];
 	}
+}
+
+RandomMov : Movement {
+
+	var <>maxValue;
+	var <>period;
+	var count=0;
+
+	*new { |object,args|
+		^super.new(object).initRandom(args);
+	}
+
+	initRandom { |args|
+
+		if (args.size>0) {
+			maxValue = args[0];
+			period = args[1];
+		} {
+			maxValue=1.0;
+			period=object.world.stepFreq;
+		};
+		/*		vel = args[0] ? Cartesian.new;
+		accel = args[1] ? Cartesian.new;*/
+
+		// if (args.isNil.not) { object.addVel(args[0])};
+		// period=object.world.stepFreq;
+
+		type=\random;
+
+	}
+
+	next {
+		// var step=object.world.stepFreq;
+		if (count==0) {
+			//new dir,vel,accel
+			object.vel_(3.collect({maxValue.rand2}));
+			object.accel_(3.collect({maxValue.rand2}));
+
+			count=period;
+		};
+		object.vel_(object.vel+object.accel); /*.object.world.limit(world.maxVel)*/
+		object.loc_(object.loc+(object.vel/step));
+		// object.accel_([0,0,0]); //constant acceleration
+
+		count=count-1;
+
+	}
+
+}
+
+Shm : Movement {
+// TODO: with the center position saved, it is not possible to change location!
+	var amp;
+	var <>xAmp,<>yAmp,<>zAmp;
+	var <>xT,<>yT,<>zT; //period--> take care not to put 0 !!
+	var count=0;
+	var center;
+
+	*new { |object,args|
+		^super.new(object).initShm(args)
+	}
+
+	initShm { |args|
+
+		if (args.size>0) {
+			args.postln;
+			#xAmp,yAmp,zAmp=args[0];
+			[ xAmp,yAmp,zAmp].postln;
+			#xT,yT,zT=args[1];
+		} {
+			xAmp=1;yAmp=1;zAmp=1;
+			xT=1;yT=1;zT=1;
+			count=0;
+		};
+
+		center=object.loc;
+
+		type=\shm;
+	}
+
+	next {
+		var xDesp,yDesp,zDesp;
+/*		count.postln;*/
+
+		// var step=object.world.stepFreq;
+
+		// if (count==(period*step)) {
+		// 	count=0;
+		// };
+
+		xDesp= xAmp * sin(2*pi*(1/xT)*count/step); //sin for starting in the center position
+		yDesp= yAmp * sin(2*pi*(1/yT)*count/step);
+		zDesp= zAmp * sin(2*pi*(1/zT)*count/step);
+
+
+		object.loc_(center+Cartesian.new(xDesp,yDesp,zDesp));
+		count=count+1;
+	}
+
 }
 
 // TODO: it is not correctly implemented!!!!
@@ -89,8 +216,6 @@ Orbit : Movement {
 	// movimiento circular con respecto al centro
 	// TODO: ADD Z DIMENSION
 	// TODO: PUT THIS AS AN OPTION...
-
-
 
 	var <>dir;
 	var <>angularVel=0;
@@ -107,7 +232,7 @@ Orbit : Movement {
 	}
 
 	next {
-		var step=object.world.stepFreq;
+		// var step=object.world.stepFreq;
 
 		angularVel= angularVel+taccel*(1-object.world.damping); //no need to limit to maxVel as angular
 		taccel= 0;
@@ -116,8 +241,12 @@ Orbit : Movement {
 		//normalize respect real seconds
 		if (dir == \lev) {
 			object.locSph_(object.locSph.addAzimuth(angularVel/step));
+			object.vel_([angularVel*object.loc.y.neg,angularVel*object.loc.x,object.vel.z]);
+			object.vel.postln;
 		} {
 			object.locSph_(object.locSph.addAzimuth(angularVel.neg/step));
+			object.vel_([angularVel*object.loc.y,angularVel*object.loc.x.neg,object.vel.z]);
+			object.vel.postln;
 		};
 
 	}

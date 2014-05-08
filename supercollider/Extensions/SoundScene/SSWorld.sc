@@ -153,15 +153,26 @@ SSWorld : RedWorld1 { //default with walls
 		vel=ssObj.vel.asArray;
 
 		loc.do{|l, i|
-			if( l.abs > (arrayDim[i]/2) ) {
-
-				vel.put(i,vel[1]*(1-damping).neg);
-				ssObj.vel_(vel);
-
-				loc.put(i,l.fold(arrayDim[i]/2.neg,arrayDim[i]/2));
-				ssObj.loc_(loc);
-
+			if (i != 2) {  //z must be treated different
+				if( l.abs > (arrayDim[i]/2) ) { //if location exceeds world dimension
+					//invert vel
+					vel.put(i,vel[i]*(1-damping).neg);
+					ssObj.vel_(vel);
+					//fold loc
+					loc.put(i,l.fold(arrayDim[i]/2.neg,arrayDim[i]/2));
+					ssObj.loc_(loc);
+				}
+			} { //z coordinate only defined in range (0..depth/2)
+				if( l > (arrayDim[i]/2) or:{l<0} ) { //if location exceeds world dimension
+					//invert vel
+					vel.put(i,vel[i]*(1-damping).neg);
+					ssObj.vel_(vel);
+					//fold loc
+					loc.put(i,l.fold(0,arrayDim[i]/2));
+					ssObj.loc_(loc);
+				}
 			}
+
 		}
 	}
 
@@ -289,6 +300,14 @@ SSWorld : RedWorld1 { //default with walls
 
 	alwaysOnTop { |bool|
 		window.alwaysOnTop_(bool);
+	}
+
+	showNames { |bool|
+		if (bool) {
+			worldView.writeText_(true);
+		} {
+			worldView.writeText_(false);
+		}
 	}
 
 	////////////////////////////////////////

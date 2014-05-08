@@ -36,6 +36,9 @@ SSObject : RedObject {
 	//adds shape
 	var <>shape;
 	var <movement;
+	////
+	var <movementList;
+	////
 	var <>regLoc; //initialize to start pos
 	var <>name;
 	var <>channel;
@@ -80,6 +83,10 @@ SSObject : RedObject {
 		};
 
 		this.setMovement(\static); //static as default
+		////
+		movementList=List.new;
+		// this.addMovement(\static);
+		////
 
 		this.initRedObject;
 	}
@@ -123,6 +130,10 @@ SSObject : RedObject {
 		vel=this.setValue(newVel);
 	}
 
+	addVel { |newVel|
+		vel=vel+this.setValue(newVel);
+	}
+
 	velSph {
 		^vel.asSpherical;
 	}
@@ -151,25 +162,58 @@ SSObject : RedObject {
 	setMovement { |type=\static ... args|
 		movement = switch (type)
 		{\static} {Static.new(this)}
-		{\rect}   {RectMov.new(this)}
+		{\rect}   {RectMov.new(this,args)}
+		{\random} {RandomMov.new(this,args)}
+		{\shm} {Shm.new(this,args)}
 		{\orbit}  {Orbit.new(this,args)};
 
 	}
 
+/*	addMovement { |type=\static ... args|
+		var movement = switch (type)
+		{\static} {Static.new(this)}
+		{\rect}   {RectMov.new(this,args)}
+		{\orbit}  {Orbit.new(this,args)};
 
+		movementList.add(movement);
+	}*/
+
+
+	// update method is called from inside SSWorld update routine
 	update {
+/*		var newLoc=Cartesian.new;
+		var newVel=Cartesian.new;
+		var newAccel=Cartesian.new;
+
+		movementList.do{ |mov|
+			var nextState=mov.next;
+			"next state".postln;
+			nextState.postln;
+			#newLoc,newVel,newAccel=[newLoc,newVel,newAccel]+nextState;
+		};
+		"loc".postln;
+		accel.postln;
+		newAccel.postln;
+		this.loc_(loc+newLoc);
+		this.vel_(vel+newVel);
+		this.accel_(accel+newAccel);*/
+
+
 		movement.next;
+		// movementList.do(_.next);
+
+
 		// vel=movement.next;
 		// super.update;
 
 
-/*		if (movement.type == \orbit) {
+		/*		if (movement.type == \orbit) {
 
 
 		} {
-			vel= (vel+accel).limit(world.maxVel);
-			loc= loc+vel;
-			accel= 0;
+		vel= (vel+accel).limit(world.maxVel);
+		loc= loc+vel;
+		accel= 0;
 		}*/
 	}
 
