@@ -78,7 +78,7 @@ RectMov : Movement {
 	}
 
 	initRect { |args|
-		/*		vel = args[0] ? Cartesian.new;
+		/* vel = args[0] ? Cartesian.new;
 		accel = args[1] ? Cartesian.new;*/
 
 		if (args.size>0) { object.addVel(args[0])};
@@ -95,15 +95,15 @@ RectMov : Movement {
 		object.loc_(object.loc+(object.vel/step));
 		object.accel_([0,0,0]);
 
-		/*		"***".postln;
+		/* "***".postln;
 		object.vel.postln;
 		object.loc.postln;*/
 
-		/*		newVel=object.vel+object.accel;
+		/* newVel=object.vel+object.accel;
 		newLoc=(object.loc+(object.vel/step));
 		newAccel=Cartesian[0,0,0];*/
 
-		/*		newVel=vel+accel;
+		/* newVel=vel+accel;
 		newLoc=vel/step;
 		newAccel=Cartesian.new;*/
 
@@ -130,7 +130,7 @@ RandomMov : Movement {
 			maxValue=1.0;
 			period=object.world.stepFreq;
 		};
-		/*		vel = args[0] ? Cartesian.new;
+		/* vel = args[0] ? Cartesian.new;
 		accel = args[1] ? Cartesian.new;*/
 
 		// if (args.isNil.not) { object.addVel(args[0])};
@@ -160,7 +160,7 @@ RandomMov : Movement {
 }
 
 Shm : Movement {
-// TODO: with the center position saved, it is not possible to change location!
+	// TODO: with the center position saved, it is not possible to change location!
 	var amp;
 	var <>xAmp,<>yAmp,<>zAmp;
 	var <>xT,<>yT,<>zT; //period--> take care not to put 0 !!
@@ -191,12 +191,12 @@ Shm : Movement {
 
 	next {
 		var xDesp,yDesp,zDesp;
-/*		count.postln;*/
+		/* count.postln;*/
 
 		// var step=object.world.stepFreq;
 
 		// if (count==(period*step)) {
-		// 	count=0;
+		// count=0;
 		// };
 
 		xDesp= xAmp * sin(2*pi*(1/xT)*count/step); //sin for starting in the center position
@@ -242,11 +242,11 @@ Orbit : Movement {
 		if (dir == \lev) {
 			object.locSph_(object.locSph.addAzimuth(angularVel/step));
 			object.vel_([angularVel*object.loc.y.neg,angularVel*object.loc.x,object.vel.z]);
-			object.vel.postln;
+			// object.vel.postln;
 		} {
 			object.locSph_(object.locSph.addAzimuth(angularVel.neg/step));
 			object.vel_([angularVel*object.loc.y,angularVel*object.loc.x.neg,object.vel.z]);
-			object.vel.postln;
+			// object.vel.postln;
 		};
 
 	}

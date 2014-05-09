@@ -28,18 +28,19 @@ SSWorldView {
 			Pen.strokeColor=Color.black;
 			Pen.alpha=1;
 
-			// draw sweet spot
-			Pen.addArc(0@0,world.sweetSpotSize,0,2pi);
-			Pen.stroke;
 
 			// draw world bounds
 			// Rect.aboutPoint(center,half x distance, half y distance)
 			// remember that coordinates are changed respect to draw view
 
+			z= (0.5).linlin(0, 1, f, 1); //0.5 because our floor is half-away from the "real" considered floor
+
+			// draw sweet spot (on the floor)
+			Pen.addArc(0@0,z*world.sweetSpotSize,0,2pi);
+			Pen.stroke;
 			//ceiling
 			Pen.addRect(Rect.aboutPoint(0@0,world.dim.y/2,world.dim.x/2));
 			//floor
-			z= (0.5).linlin(0, 1, f, 1); //0.5 because our floor is half-away from the "real" considered floor
 			Pen.addRect(Rect.aboutPoint(0@0,z*world.dim.y/2,z*world.dim.x/2));
 			//wall lines
 			Pen.line(Point(world.dim.x/2,world.dim.y/2),Point(z*world.dim.x/2,z*world.dim.y/2));

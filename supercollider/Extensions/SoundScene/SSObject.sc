@@ -112,15 +112,39 @@ SSObject : RedObject {
 
 	///////////////// loc
 
-	loc_ { |newLoc|
+	/*	loc_ { |newLoc|
+	loc=this.setValue(newLoc);
+	}*/
+
+	loc_ { |newLoc,x=nil,y=nil,z=nil|
+		newLoc ?? {
+			newLoc = loc;
+			x !? {newLoc.x = x};
+			y !? {newLoc.y = y};
+			z !? {newLoc.z = z};
+		};
 		loc=this.setValue(newLoc);
 	}
+
+	/*	locX_ { |newX|
+	var newLoc=[newX,]
+	}*/
 
 	locSph {
 		^loc.asSpherical;
 	}
 
-	locSph_ {|newLocSph|
+	/*	locSph_ {|newLocSph|
+	loc=this.setValue(newLocSph,\spherical);
+	}*/
+
+	locSph_ { |newLocSph,rho=nil,azi=nil,ele=nil|
+		newLocSph ?? {
+			newLocSph = this.locSph;
+			rho !? {newLocSph.rho = rho};
+			azi !? {newLocSph.azimuth = azi};
+			ele !? {newLocSph.elevation = ele};
+		};
 		loc=this.setValue(newLocSph,\spherical);
 	}
 
@@ -162,34 +186,34 @@ SSObject : RedObject {
 	setMovement { |type=\static ... args|
 		movement = switch (type)
 		{\static} {Static.new(this)}
-		{\rect}   {RectMov.new(this,args)}
+		{\rect} {RectMov.new(this,args)}
 		{\random} {RandomMov.new(this,args)}
 		{\shm} {Shm.new(this,args)}
-		{\orbit}  {Orbit.new(this,args)};
+		{\orbit} {Orbit.new(this,args)};
 
 	}
 
-/*	addMovement { |type=\static ... args|
-		var movement = switch (type)
-		{\static} {Static.new(this)}
-		{\rect}   {RectMov.new(this,args)}
-		{\orbit}  {Orbit.new(this,args)};
+	/* addMovement { |type=\static ... args|
+	var movement = switch (type)
+	{\static} {Static.new(this)}
+	{\rect} {RectMov.new(this,args)}
+	{\orbit} {Orbit.new(this,args)};
 
-		movementList.add(movement);
+	movementList.add(movement);
 	}*/
 
 
 	// update method is called from inside SSWorld update routine
 	update {
-/*		var newLoc=Cartesian.new;
+		/* var newLoc=Cartesian.new;
 		var newVel=Cartesian.new;
 		var newAccel=Cartesian.new;
 
 		movementList.do{ |mov|
-			var nextState=mov.next;
-			"next state".postln;
-			nextState.postln;
-			#newLoc,newVel,newAccel=[newLoc,newVel,newAccel]+nextState;
+		var nextState=mov.next;
+		"next state".postln;
+		nextState.postln;
+		#newLoc,newVel,newAccel=[newLoc,newVel,newAccel]+nextState;
 		};
 		"loc".postln;
 		accel.postln;
@@ -207,7 +231,7 @@ SSObject : RedObject {
 		// super.update;
 
 
-		/*		if (movement.type == \orbit) {
+		/* if (movement.type == \orbit) {
 
 
 		} {

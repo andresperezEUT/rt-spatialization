@@ -32,7 +32,7 @@
 //
 // TODO:
 // -> object representations according to their shapes
-// -> adjust time steps to seconds
+// -> OBJECT GROUPING AND HIERARCHIES
 ////////////////////////////////////////////////////////////////////////////
 
 SSWorld : RedWorld1 { //default with walls
@@ -68,7 +68,7 @@ SSWorld : RedWorld1 { //default with walls
 	initSSWorld{ |mystepFreq|
 		stepFreq=mystepFreq;
 		//defaults
-		rDiff=1;
+		rDiff=0.05; ////////// <---- check bibliography!!
 		aziDiff=1.degree2rad;
 		eleDiff=5.degree2rad;
 		viewDiff=false;
@@ -101,7 +101,7 @@ SSWorld : RedWorld1 { //default with walls
 
 
 		// objects= Dictionary.new; // inRedWorld
-		RedUniverse.add(this);						//add world to universe
+		RedUniverse.add(this);	//add world to universe
 		this.prInitSurroundings;
 
 	}
@@ -124,21 +124,45 @@ SSWorld : RedWorld1 { //default with walls
 
 		//SEND NEW_OBJECT AND POSITION MESSAGE
 		//TODO: DICCIONARIO CON LOS OBJETOS PARA MANEJARLOS POR NOMBRE!!!
-		address.sendMsg("/new",obj.channel);
-		address.sendMsg("/pos",obj.channel,obj.loc.x,obj.loc.y,obj.loc.z);
+
+		/*		// no value changes inside sweetspot
+		if (obj.locSph.rho < sweetSpotSize) {
+		obj.locSph_(rho:sweetSpotSize);
+		};*/
+
+		this.sendMsg("/new",obj);
+		// address.sendMsg("/new",obj.channel,obj.locSph.rho,obj.locSph.azimuth,obj.locSph.elevation);
+		// address.sendMsg("/pos",i,obj.locSph.rho,obj.locSph.azimuth,obj.locSph.elevation);
 
 
 		//refresh view
 		this.updateView;
 	}
 
-	contains {|ssObj|							//returns boolean if object inside world dim
+	sendMsg { |type,obj| // type: "/new", "/pos"
+
+		// TODO: avoid the clip when crossing by [0,0,0]
+		var channel=obj.channel;
+		var rho=obj.locSph.rho;
+		var azi=obj.locSph.azimuth;
+		var ele=obj.locSph.elevation;
+
+		// no value changes inside sweetspot
+		if (rho < sweetSpotSize) {
+			rho = sweetSpotSize;
+		};
+
+		address.sendMsg(type,channel,rho,azi,ele);
+
+	}
+
+	contains {|ssObj|	//returns boolean if object inside world dim
 		var arrayDim=dim.asArray;
 		^ssObj.loc.any{ |l,i| l.abs > (arrayDim[i]/2) }.not
 	}
 
 	// wrap: toroidal world
-	/*	contain {|ssObj|
+	/* contain {|ssObj|
 	var arrayDim=dim.asArray;
 	if(ssObj.loc.any{ |l,i| l.abs > (arrayDim[i]/2) }) {
 	ssObj.loc= ssObj.loc%dim;
@@ -153,7 +177,7 @@ SSWorld : RedWorld1 { //default with walls
 		vel=ssObj.vel.asArray;
 
 		loc.do{|l, i|
-			if (i != 2) {  //z must be treated different
+			if (i != 2) { //z must be treated different
 				if( l.abs > (arrayDim[i]/2) ) { //if location exceeds world dimension
 					//invert vel
 					vel.put(i,vel[i]*(1-damping).neg);
@@ -198,17 +222,19 @@ SSWorld : RedWorld1 { //default with walls
 				var lastO,rLastO,aziLastO,eleLastO;
 				var newO,rNewO,aziNewO,eleNewO;
 
+				var diffVector;
 				var updateReg;
 
 
 				// TODO: IMPLEMENT THIS COMPACT!!
 				// lastPos=obj.loc;
 				lastPos=obj.regLoc;
-				lastO=lastPos-this.center; //position centerend around wold center
+
+				/*				lastO=lastPos-this.center; //position centerend around wold center
 				// lastO=Cartesian(lastO[0],lastO[1],lastO[2]); // already cartesian!
 				rLastO=lastO.rho; //automatic casting to cartesian, polar, spherical!!
 				aziLastO=lastO.theta;
-				eleLastO=lastO.phi;
+				eleLastO=lastO.phi;*/
 
 				///////////
 				//update
@@ -218,14 +244,31 @@ SSWorld : RedWorld1 { //default with walls
 
 				// TODO: IMPLEMENT THIS COMPACT!!
 				newPos=obj.loc;
-				newO=newPos-this.center; //position centerend around wold center
+				/*
+				"***********".postln;
+				lastPos.postln;
+				newPos.postln;*/
+
+
+				updateReg=false;
+				diffVector=(lastPos-newPos).abs.asSpherical;
+				// diffVector.postln;
+
+				// check if the difference is somehow exceding JND
+				if (diffVector.rho > rDiff or:{diffVector.azimuth > aziDiff or:{diffVector.elevation > eleDiff}}) {
+					updateReg=true;
+					// "CHANGE".postln;
+				};
+
+
+				/*				newO=newPos-this.center; //position centerend around wold center
 				//newO=Cartesian(newO[0],newO[1],newO[2]); // already cartesian!
 				rNewO=newO.rho; //automatic casting to cartesian, polar, spherical!!
 				aziNewO=newO.theta;
-				eleNewO=newO.phi;
+				eleNewO=newO.phi;*/
 
 				// compare variation!!
-				/*				["last",aziLastO,eleLastO].postln;
+				/* ["last",aziLastO,eleLastO].postln;
 				["new",aziNewO,eleNewO].postln;
 				["rDif",abs(rNewO-rLastO)].postln;
 				["aziDif",abs(aziNewO-aziLastO)].postln;
@@ -233,25 +276,25 @@ SSWorld : RedWorld1 { //default with walls
 
 
 				// TODO; MERGE THESE IFS INTO ONE!!
-				updateReg=false;
+				/*				updateReg=false;
 				if (abs(rNewO-rLastO) > rDiff) {
-					//notify
-					// "R DIFF".postln;
-					//update
-					updateReg=true;
+				//notify
+				// "R DIFF".postln;
+				//update
+				updateReg=true;
 				};
 				if (abs(aziNewO-aziLastO) > aziDiff) {
-					//notify
-					// "azi diff".postln;
-					//update
-					updateReg=true;
+				//notify
+				// "azi diff".postln;
+				//update
+				updateReg=true;
 				};
 				if (abs(eleNewO-eleLastO) > eleDiff) {
-					//notify
-					// "ele diff".postln;
-					//update
-					updateReg=true;
-				};
+				//notify
+				// "ele diff".postln;
+				//update
+				updateReg=true;
+				};*/
 
 
 
@@ -264,9 +307,16 @@ SSWorld : RedWorld1 { //default with walls
 					//FORMAT: object id, x,y,z
 					// address.sendMsg("/object_loc",i,obj.loc[0],obj.loc[1],obj.loc[2]);
 					/////////////////////////////////////////
-					//FORMAT: object id, phi,theta (CAUTION: DEFINED INVERSELY IN Spherical.sc)
+					//FORMAT: object id, rho, azimuth, elevation
 
-					address.sendMsg("/pos",i,/*obj.locSph.rho,*/obj.locSph.theta,obj.locSph.phi);
+					// address.sendMsg("/pos",i,/*obj.locSph.rho,*/obj.locSph.theta,obj.locSph.phi);
+
+					/*		// no value changes inside sweetspot
+					if (obj.locSph.rho < sweetSpotSize) {
+					obj.locSph_(rho:sweetSpotSize);
+					};*/
+
+					this.sendMsg("/pos",obj);
 
 					/////////////////////////////////////////
 					// see what is reported

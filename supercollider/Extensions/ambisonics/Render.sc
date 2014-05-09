@@ -37,6 +37,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+
+
 Render {
 
 	var <port;
@@ -66,10 +68,21 @@ Render {
 
 		newSource = { |msg, time, addr, recvPort|
 			var channel=msg[1];
-			"NEW SOURCE---".postln;
-			("channel: "++channel.asString).postln;
+			var r=msg[2];
+			var azimuth=msg[3];
+			var elevation=msg[4];
+
+			if (verbose) {
+				"NEW SOURCE---".postln;
+				("channel: "++channel.asString).postln;
+				("r: "++r.asString).postln;
+				("azimuth: "++azimuth.asString).postln;
+				("elevation: "++elevation.asString).postln;
+			};
+
+
 			//TODO: check if source already exists
-			encoders.add(channel -> Synth(\ambiEncoder,args:[\busIn,channel],addAction:'addToTail'))
+			encoders.add(channel -> Synth(\ambiEncoder,args:[\busIn,channel,\r,r,\azi,azimuth,\ele,elevation],addAction:'addToTail'))
 		};
 
 		endSource = { |msg, time, addr, recvPort|
@@ -85,16 +98,21 @@ Render {
 
 		posSource = { |msg, time, addr, recvPort|
 			var channel=msg[1];
-			var azimuth=msg[2];
-			var elevation=msg[3];
+			var r=msg[2];
+			var azimuth=msg[3];
+			var elevation=msg[4];
 
 			if (verbose) {
 				("channel: "++channel.asString).postln;
+				("r: "++r.asString).postln;
 				("azimuth: "++azimuth.asString).postln;
 				("elevation: "++elevation.asString).postln;
 			};
 			// do the movement
 			//TODO: only move if position change is bigger than JND...
+			// !! already implemented in SSWorld
+
+			encoders.at(channel).set(\r,r);
 			encoders.at(channel).set(\azi,azimuth);
 			encoders.at(channel).set(\ele,elevation);
 
@@ -105,7 +123,15 @@ Render {
 		OSCdef(\pos, posSource, '/pos', nil); /*change nil for sourceAddress, just in case*/
 		OSCdef(\end, endSource, '/end', nil);
 
+
+
+
 		//init SynthDef
+
+		//TODO: ADD DELAY!
+		//TODO: TRY OUT DIFFERENT INVERSE R LAWS
+		//TODO: IMPLEMENT EARLY REFLECTIONS
+
 		SynthDef(\ambiEncoder,{ |busIn=0,r=1,azi=0,ele=0|
 			var sig, enc, out;
 			var filterfreq, filteramp;
@@ -118,12 +144,16 @@ Render {
 			filterfreq = filterfreq.clip(0,20000); // freq above 24kHz destroy your ears!!
 			// filterfreq.poll;
 			// inverse square-law attenuation
-			filteramp = 1 / (r**2);
+			// filteramp = 1 / (r**2);
+			filteramp = 1 / r;
+
 			filteramp=filteramp.clip(0,1); // don't allow <1 amp values
+
 			// filteramp.poll;
+
 			sig = LPF.ar(sig,filterfreq,filteramp); // 2nd order butterworth lpf
 
-				// clip the signal to avoid shits
+			// clip the signal to avoid shits
 			sig = Clip.ar(sig,0,1);
 
 			// ambisonics encoding
