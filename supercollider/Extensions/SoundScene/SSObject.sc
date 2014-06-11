@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, April 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, May 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 SSObject : RedObject {
 
 	//adds shape
-	var <>shape;
+	var <shape;
 	var <movement;
 	////
 	var <movementList;
@@ -42,8 +42,16 @@ SSObject : RedObject {
 	var <>regLoc; //initialize to start pos
 	var <>name;
 	var <>channel;
+	//
+	var <>gravity;
+	var <>friction;
+	//
+	var <dAzimuth,<dElevation; // width for extended objects
+	var <preserveArea; // for extended objects
 
-	*new {|world, loc, vel, accel, mass, size, shape, name, channel|
+	var <present;
+
+	*new {|world, loc, vel, accel, mass, size, shape, gravity, friction, name, channel|
 		//almost same method as in RedObject
 
 		^super.newCopyArgs(
@@ -54,11 +62,11 @@ SSObject : RedObject {
 			mass ? 1,
 			size ? 1
 			//change init function
-		).initSSObject(shape, name, channel)
+		).initSSObject(shape, gravity, friction, name, channel)
 	}
 
 
-	initSSObject { |myshape, myname, mychannel|
+	initSSObject { |myshape, mygravity, myfriction, myname, mychannel|
 
 		// var numNames;
 		regLoc=loc;
@@ -69,9 +77,18 @@ SSObject : RedObject {
 			size=0.05;
 		};
 
+		gravity = mygravity ? false;
+		friction = myfriction ? false;
+
+		dAzimuth=AmbXEnc.delta;
+		dElevation=AmbXEnc.delta;
+		preserveArea=0; //false
+
+		present = true;
+
 		//channel = mychannel ? 0;
 		//name = myname ?? {(\track++channel).asSymbol};
-		channel=mychannel;
+		channel=mychannel; //if they are nil, they will be assigned by default SSWorld numObjects
 
 
 		name=myname; //if they are nil, they will be assigned by default SSWorld numObjects
@@ -91,8 +108,23 @@ SSObject : RedObject {
 		this.initRedObject;
 	}
 
+	remove {
+		world.remove(this);
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////
 	// getter / setter methods
+
+
+	setChannel { |newChannel|
+		channel = newChannel;
+		world.sendMsg(\channel,this);
+	}
+
+	present_ { |bool|
+		present = bool;
+		world.sendMsg(\present,this);
+	}
 
 	// private:: auto-casting to Cartesian
 	setValue { |value,type=\cartesian|
@@ -180,6 +212,51 @@ SSObject : RedObject {
 		accel=this.setValue(newAccelSph,\spherical);
 	}
 
+	stop {
+		this.accel_([0,0,0]);
+		this.vel_([0,0,0]);
+	}
+
+	///// only for extended objects
+
+	dAzimuth_ { |newD| // in radians
+
+		// do not allow values of 0
+		dAzimuth = newD.clip(AmbXEnc.delta,2pi);
+
+		world.sendMsg(\width,this);
+	}
+
+	dElevation_ { |newD| // in radians
+		var e = this.locSph.elevation;
+
+		// do not allow values of 0
+		dElevation = newD.clip(AmbXEnc.delta,pi);
+
+		// requieriment: e+de/2 <= pi/2 AND: e-de/2 >= -pi/2
+		e = min(e,(pi/2)-(dElevation/2));
+		e = max(e,(-pi/2)+(dElevation/2));
+		this.locSph_(ele:e);
+
+		world.sendMsg(\width,this);
+	}
+
+	shape_ { |newShape|
+		shape = newShape;
+
+		world.sendMsg(\type,this);
+	}
+
+	preserveArea_ { |bool|
+		if (bool) {
+			preserveArea = 1; //int values for the server
+		} {
+			preserveArea = 0;
+		};
+
+		world.sendMsg(\preserveArea,this);
+	}
+
 
 	/////////////////////////////////////////////////////////////////////////////////
 	//set
@@ -188,6 +265,7 @@ SSObject : RedObject {
 		{\static} {Static.new(this)}
 		{\rect} {RectMov.new(this,args)}
 		{\random} {RandomMov.new(this,args)}
+		{\brown} {Brownian.new(this,args)}
 		{\shm} {Shm.new(this,args)}
 		{\orbit} {Orbit.new(this,args)};
 
@@ -205,40 +283,13 @@ SSObject : RedObject {
 
 	// update method is called from inside SSWorld update routine
 	update {
-		/* var newLoc=Cartesian.new;
-		var newVel=Cartesian.new;
-		var newAccel=Cartesian.new;
 
-		movementList.do{ |mov|
-		var nextState=mov.next;
-		"next state".postln;
-		nextState.postln;
-		#newLoc,newVel,newAccel=[newLoc,newVel,newAccel]+nextState;
-		};
-		"loc".postln;
-		accel.postln;
-		newAccel.postln;
-		this.loc_(loc+newLoc);
-		this.vel_(vel+newVel);
-		this.accel_(accel+newAccel);*/
-
+		if (gravity)  { this.addForce(world.gravity) };
+		if (friction) { this.vel_(this.vel*(1-world.friction)) };
 
 		movement.next;
 		// movementList.do(_.next);
-
-
-		// vel=movement.next;
-		// super.update;
-
-
-		/* if (movement.type == \orbit) {
-
-
-		} {
-		vel= (vel+accel).limit(world.maxVel);
-		loc= loc+vel;
-		accel= 0;
-		}*/
 	}
+
 
 }

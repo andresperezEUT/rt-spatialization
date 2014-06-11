@@ -28,17 +28,17 @@
 
 
 	//!!!TODO. clean up focal and scaling
-	*aboutSSVector {|vec, size, width, height, depth, s= 1, f= 0.5|
+	*aboutSSVector {|vec, size, width, height, depth, s= 1, f= 0.75|
 		var x, y, z, ox, oy;
 		z= (depth-vec.z/(depth*s)).linlin(0, 1, f, 1);
 		x= vec.x*z;
 		y= vec.y*z;
-/*		ox= 1-z*(width*0.5)+x;
+		/*		ox= 1-z*(width*0.5)+x;
 		oy= 1-z*(height*0.5)+y;*/
 		^this.aboutPoint(Point(x, y), size*z.linlin(0, 1, 0.01, 1), size*z.linlin(0, 1, 0.01, 1))
 	}
 
-	*aboutSSObject {|obj, s= 1, f= 0.5|
+	*aboutSSObject {|obj, s= 1, f= 0.75|
 		^this.aboutSSVector(
 			obj.loc,
 			obj.size,

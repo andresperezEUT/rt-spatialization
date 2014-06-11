@@ -24,8 +24,9 @@
 // Each instance is associated with the SSObject instance that has this concrete behavior
 //
 // TODO:
-// -> support several dynamic behaviors
-// -> scale vectors to behave in standard units (angular velocity, newtons, etc...)
+// -> support several dynamic behaviors (http://redmine.spatdif.org/projects/spatdif/wiki/Trajectory_Extension)
+// -> implement as Patterns (what to do with input forces??)
+// -> implement Orbit, Brownian compatibility with addForce
 //
 ////////////////////////////////////////////////////////////////////////////
 
@@ -61,7 +62,9 @@ Static : Movement {
 	}
 
 	next {
-		object.vel_([0,0,0]);
+		// passive object
+		object.vel_(object.vel+object.accel);
+		object.loc_(object.loc+object.vel);
 		object.accel_([0,0,0]);
 		// "static".postln;
 		// ^[Cartesian.new,Cartesian.new,Cartesian.new];
@@ -88,7 +91,7 @@ RectMov : Movement {
 	}
 
 	next {
-		var step=object.world.stepFreq;
+		// var step=object.world.stepFreq;
 		var newLoc,newVel,newAccel;
 
 		object.vel_(object.vel+object.accel); /*.object.world.limit(world.maxVel)*/
@@ -128,7 +131,8 @@ RandomMov : Movement {
 			period = args[1];
 		} {
 			maxValue=1.0;
-			period=object.world.stepFreq;
+			// period=object.world.stepFreq;
+			period=step;
 		};
 		/* vel = args[0] ? Cartesian.new;
 		accel = args[1] ? Cartesian.new;*/
@@ -158,6 +162,50 @@ RandomMov : Movement {
 	}
 
 }
+
+Brownian : Movement {
+
+	var x,y,z;
+	var dimX,dimY,dimZ;
+	var <step; // percentage about 1 for the room size
+
+	*new { |object,args|
+		^super.new(object).initBrownian(args)
+	}
+
+	initBrownian { |args|
+
+		if (args.size>0) {
+			step = args[0];
+		} {
+			step = 0.01; // 1% of the dim size
+		};
+
+		dimX = object.world.dim.x;
+		dimY = object.world.dim.y;
+		dimZ = object.world.dim.z;
+
+		x = Pbrown(dimX/2.neg, dimX/2, step*dimX).asStream;
+		y = Pbrown(dimY/2.neg, dimY/2, step*dimY).asStream;
+		z = Pbrown(0, dimZ, step*dimZ).asStream;
+
+		type=\brown;
+	}
+
+	step_ { |newStep|
+		step=newStep;
+		x = Pbrown(dimX/2.neg, dimX/2, step*dimX).asStream;
+		y = Pbrown(dimY/2.neg, dimY/2, step*dimY).asStream;
+		z = Pbrown(0, dimZ, step*dimZ).asStream;
+	}
+
+	next {
+		object.loc_([x.next,y.next,z.next])
+	}
+
+}
+
+
 
 Shm : Movement {
 	// TODO: with the center position saved, it is not possible to change location!
@@ -234,7 +282,7 @@ Orbit : Movement {
 	next {
 		// var step=object.world.stepFreq;
 
-		angularVel= angularVel+taccel*(1-object.world.damping); //no need to limit to maxVel as angular
+		angularVel= angularVel+taccel; //no need to limit to maxVel as angular
 		taccel= 0;
 
 		//set new pos

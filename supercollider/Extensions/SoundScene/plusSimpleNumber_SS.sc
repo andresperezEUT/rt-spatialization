@@ -24,11 +24,27 @@
 ////////////////////////////////////////////////////////////////////////////
 + SimpleNumber {
 
+	// degree / radian conversion
+
 	degree2rad {
 		^this*2*pi/360;
 	}
 
 	rad2degree {
 		^this*360/(2*pi);
+	}
+
+	// trigonometric extensions: secant, cosecant and cotangent
+
+	sec {
+		^cos(this).reciprocal;
+	}
+
+	csc {
+		^sin(this).reciprocal;
+	}
+
+	cot {
+		^tan(this).reciprocal;
 	}
 }

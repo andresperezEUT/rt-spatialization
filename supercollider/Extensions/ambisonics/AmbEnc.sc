@@ -24,7 +24,7 @@
 //
 // implements Ambisonic encoders up to 3rd order
 // N3D normalization,
-// order : W, Y,Z,X, ...
+// ACN order : W, Y,Z,X, ...
 //
 // TODO:
 // - contemplate other normalization factors
@@ -35,7 +35,7 @@
 
 AmbEnc {
 	*ar { |in, azi=0, elev=0, norm='N3D'|
-		^ in * this.kr(azi, elev,norm);
+		^ in * this.kr(azi,elev,norm);
 	}
 
 	*kr { |azi, elev|
@@ -127,8 +127,8 @@ AmbEnc3 : AmbEnc {
 	/* 	Class method: *kr
 	   	Control rate method providing the Ambisonics coeffs
 	   	Parameter
-			azi: Azimuth angle of source
-			elev: Elevation angle of source
+			phi: Azimuth angle of source
+			theta: Elevation angle of source
 		Return
 			coeffs: Array[16] of Ambisonics coeffs
 	*/
@@ -185,8 +185,6 @@ AmbEnc3 : AmbEnc {
 		l = sqrt7 * sqrt3_8 * cosPhi * cosTheta * ((5 * (sinTheta2)) - 1);
 		n = sqrt7 * sqrt15 / 2 * cos2Phi * sinTheta * cosTheta2;
 		p = sqrt7 * sqrt5_8 * cos3Phi * cosTheta3;
-
-		x.postln;
 
 		^[w, y, z, x, v, t, r, s, u, q, o, m, k, l, n, p];
 	}

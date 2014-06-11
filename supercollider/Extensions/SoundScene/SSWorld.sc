@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, April 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, May 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -31,11 +31,12 @@
 //
 //
 // TODO:
-// -> object representations according to their shapes
 // -> OBJECT GROUPING AND HIERARCHIES
 ////////////////////////////////////////////////////////////////////////////
 
 SSWorld : RedWorld1 { //default with walls
+
+	var <>friction;
 
 	var time, <>stepFreq;
 
@@ -55,25 +56,30 @@ SSWorld : RedWorld1 { //default with walls
 
 	var <>sweetSpotSize=2;
 
-	*new {|dim, gravity, maxVel, damping, timeStep=60|
+	var <maxDistance; //maximum distance on the room from the center
+
+	*new {|dim, gravity, maxVel, damping, friction=0.01, timeStep=60|
 
 		^super.newCopyArgs(
 			dim !? {if (dim.isArray) {Cartesian.fromArray(dim)} {dim} } ?? {Cartesian(10,10,5)},
 			gravity !? {if (gravity.isArray) {Cartesian.fromArray(gravity)} {gravity} } ?? {Cartesian(0,0.98,0)},
 			maxVel ? 10,
 			damping ? 0.25
-		).initSSWorld(timeStep);
+		).initSSWorld(friction,timeStep);
 	}
 
-	initSSWorld{ |mystepFreq|
+	initSSWorld{ |myFriction,mystepFreq|
+		friction=myFriction;
 		stepFreq=mystepFreq;
 		//defaults
 		rDiff=0.05; ////////// <---- check bibliography!!
 		aziDiff=1.degree2rad;
-		eleDiff=5.degree2rad;
+		eleDiff=5.degree2rad; ////////// <---- check bibliography!!
 		viewDiff=false;
 
 		address=NetAddr.localAddr;
+
+		maxDistance=this.getMaxDistance;
 
 
 		//view
@@ -106,53 +112,110 @@ SSWorld : RedWorld1 { //default with walls
 
 	}
 
+	getMaxDistance {
+		var extreme=dim*[0.5,0.5,1];
+		^extreme.rho;
+	}
+
+	dim_{ |value|
+
+		if (value.isArray) {
+			value=Cartesian.fromArray(value)
+		};
+		dim=value;
+	}
+
+
 	add { |obj|
 
 		// super.add(obj); // save object in objects array and set object's world to this
 		objects.add(numObjects -> obj);
-		obj.world= this; //maybe this is redundant???
+		// obj.world= this; //maybe this is redundant???
 		//////
 		obj.channel = obj.channel ? numObjects;
-		obj.name = obj.name ?? {(\track++numObjects).asSymbol};
+		obj.name = obj.name ?? {(numObjects).asSymbol};
 		// obj.name=(\track++numObjects).asSymbol;
 
 		//internal dictionaries;
 		objectsID.add(numObjects -> obj.name);
-
 		numObjects=numObjects+1;
 
-
-		//SEND NEW_OBJECT AND POSITION MESSAGE
-		//TODO: DICCIONARIO CON LOS OBJETOS PARA MANEJARLOS POR NOMBRE!!!
-
-		/*		// no value changes inside sweetspot
-		if (obj.locSph.rho < sweetSpotSize) {
-		obj.locSph_(rho:sweetSpotSize);
-		};*/
-
-		this.sendMsg("/new",obj);
-		// address.sendMsg("/new",obj.channel,obj.locSph.rho,obj.locSph.azimuth,obj.locSph.elevation);
-		// address.sendMsg("/pos",i,obj.locSph.rho,obj.locSph.azimuth,obj.locSph.elevation);
-
+		// send message to render
+		this.sendMsg(\new,obj);
+		this.sendMsg(\position,obj);
 
 		//refresh view
 		this.updateView;
+
 	}
 
-	sendMsg { |type,obj| // type: "/new", "/pos"
+	remove { |obj|
+		objects.findKeyForValue(obj) !? { |key|
+			// remove object from objects list
+			objects.removeAt(key);
+			// remove object name from objectsID list
+			objectsID.removeAt(key);
+			//refresh view
+			this.updateView;
+			// send message to render
+			this.sendMsg(\end,obj);
+		}
+	}
 
-		// TODO: avoid the clip when crossing by [0,0,0]
-		var channel=obj.channel;
-		var rho=obj.locSph.rho;
-		var azi=obj.locSph.azimuth;
-		var ele=obj.locSph.elevation;
+	// TODO: avoid the clip when crossing by [0,0,0]
+	sendMsg { |type,obj|
+		var name = obj.name;
 
-		// no value changes inside sweetspot
-		if (rho < sweetSpotSize) {
-			rho = sweetSpotSize;
-		};
+		switch(type)
 
-		address.sendMsg(type,channel,rho,azi,ele);
+		// instance management
+
+		{\new} {
+			// create instance
+			address.sendMsg("/spatdifcmd/addEntity",name);
+			// set media source
+			address.sendMsg("/spatdif/source/"++name++"/media/type",\jack); // redundant because it's the only type supported by SpatialRender
+			address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+		}
+
+		{\end} {
+			address.sendMsg("/spatdifcmd/removeEntity",name);
+		}
+
+
+		// source characteristics
+
+		{\channel} {
+			address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+		}
+		{\position} {
+			var azi = obj.locSph.azimuth.rad2degree;
+			var ele = obj.locSph.elevation.rad2degree;
+			// no value changes inside sweetspot
+			var rho = max(obj.locSph.rho,sweetSpotSize);
+
+			// [azimuth, elevation, distance] in degrees
+			address.sendMsg("/spatdif/source/"++name++"/position",azi,ele,rho,\aed);
+		}
+		{\type} {
+			address.sendMsg("/spatdif/source/"++name++"/type",obj.shape);
+		}
+		{\present} {
+			address.sendMsg("/spatdif/source/"++name++"/present",obj.present);
+		}
+
+
+		// source characteristics -- extended
+
+		{\width} {
+			var da = obj.dAzimuth.rad2degree;
+			var de = obj.dElevation.rad2degree;
+			address.sendMsg("/spatdif/source/"++name++"/width",da,de);
+		}
+
+		{\preserveArea} {
+			address.sendMsg("/spatdif/source/"++name++"/preserveArea",obj.preserveArea);
+		}
 
 	}
 
@@ -176,6 +239,7 @@ SSWorld : RedWorld1 { //default with walls
 		loc=ssObj.loc.asArray;
 		vel=ssObj.vel.asArray;
 
+		////////////////////////////////////////// <--------------------------------
 		loc.do{|l, i|
 			if (i != 2) { //z must be treated different
 				if( l.abs > (arrayDim[i]/2) ) { //if location exceeds world dimension
@@ -186,13 +250,13 @@ SSWorld : RedWorld1 { //default with walls
 					loc.put(i,l.fold(arrayDim[i]/2.neg,arrayDim[i]/2));
 					ssObj.loc_(loc);
 				}
-			} { //z coordinate only defined in range (0..depth/2)
-				if( l > (arrayDim[i]/2) or:{l<0} ) { //if location exceeds world dimension
+			} { //z coordinate only defined in range (0..depth)
+				if( l > (arrayDim[i]/*/2*/) or:{l<0} ) { //if location exceeds world dimension
 					//invert vel
 					vel.put(i,vel[i]*(1-damping).neg);
 					ssObj.vel_(vel);
 					//fold loc
-					loc.put(i,l.fold(0,arrayDim[i]/2));
+					loc.put(i,l.fold(0,arrayDim[i]/*/2*/));
 					ssObj.loc_(loc);
 				}
 			}
@@ -218,106 +282,29 @@ SSWorld : RedWorld1 { //default with walls
 		if (this.objects.size > 0 ) {
 			this.objects.do { |obj,i|
 				// TODO: addForce??
-				var lastPos,newPos,aziDif,eleDif;
-				var lastO,rLastO,aziLastO,eleLastO;
-				var newO,rNewO,aziNewO,eleNewO;
-
+				var lastPos,newPos;
 				var diffVector;
 				var updateReg;
 
-
-				// TODO: IMPLEMENT THIS COMPACT!!
-				// lastPos=obj.loc;
+				// get last recorded position
 				lastPos=obj.regLoc;
-
-				/*				lastO=lastPos-this.center; //position centerend around wold center
-				// lastO=Cartesian(lastO[0],lastO[1],lastO[2]); // already cartesian!
-				rLastO=lastO.rho; //automatic casting to cartesian, polar, spherical!!
-				aziLastO=lastO.theta;
-				eleLastO=lastO.phi;*/
-
-				///////////
 				//update
 				obj.update;
 				this.contain(obj); //wrap it into world limits
-				///////////
-
-				// TODO: IMPLEMENT THIS COMPACT!!
+				// compare new and old positions
 				newPos=obj.loc;
-				/*
-				"***********".postln;
-				lastPos.postln;
-				newPos.postln;*/
-
-
-				updateReg=false;
 				diffVector=(lastPos-newPos).abs.asSpherical;
-				// diffVector.postln;
+				updateReg=false;
 
 				// check if the difference is somehow exceding JND
 				if (diffVector.rho > rDiff or:{diffVector.azimuth > aziDiff or:{diffVector.elevation > eleDiff}}) {
 					updateReg=true;
-					// "CHANGE".postln;
 				};
 
-
-				/*				newO=newPos-this.center; //position centerend around wold center
-				//newO=Cartesian(newO[0],newO[1],newO[2]); // already cartesian!
-				rNewO=newO.rho; //automatic casting to cartesian, polar, spherical!!
-				aziNewO=newO.theta;
-				eleNewO=newO.phi;*/
-
-				// compare variation!!
-				/* ["last",aziLastO,eleLastO].postln;
-				["new",aziNewO,eleNewO].postln;
-				["rDif",abs(rNewO-rLastO)].postln;
-				["aziDif",abs(aziNewO-aziLastO)].postln;
-				["eleDif",abs(eleNewO-eleLastO)].postln;*/
-
-
-				// TODO; MERGE THESE IFS INTO ONE!!
-				/*				updateReg=false;
-				if (abs(rNewO-rLastO) > rDiff) {
-				//notify
-				// "R DIFF".postln;
-				//update
-				updateReg=true;
-				};
-				if (abs(aziNewO-aziLastO) > aziDiff) {
-				//notify
-				// "azi diff".postln;
-				//update
-				updateReg=true;
-				};
-				if (abs(eleNewO-eleLastO) > eleDiff) {
-				//notify
-				// "ele diff".postln;
-				//update
-				updateReg=true;
-				};*/
-
-
-
-				//update reg
+				//update new location inside object and send message to render
 				if (updateReg) {
-
 					obj.regLoc_(newPos);
-
-					/////////////////////////////////////////
-					//FORMAT: object id, x,y,z
-					// address.sendMsg("/object_loc",i,obj.loc[0],obj.loc[1],obj.loc[2]);
-					/////////////////////////////////////////
-					//FORMAT: object id, rho, azimuth, elevation
-
-					// address.sendMsg("/pos",i,/*obj.locSph.rho,*/obj.locSph.theta,obj.locSph.phi);
-
-					/*		// no value changes inside sweetspot
-					if (obj.locSph.rho < sweetSpotSize) {
-					obj.locSph_(rho:sweetSpotSize);
-					};*/
-
-					this.sendMsg("/pos",obj);
-
+					this.sendMsg(\position,obj);
 					/////////////////////////////////////////
 					// see what is reported
 					if (viewDiff) {

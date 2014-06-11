@@ -1,9 +1,12 @@
+// TODO: add sliders for (un)center the screen
+
 SSWorldView {
 
 	var <world;
 	var drawFunc;
 	var <>textScale=10;
 	var <>writeText=true;
+	var <>f=0.75; //focal point for perspective drawing
 
 	*new{ |ssWorld|
 		^super.new.init(ssWorld);
@@ -17,15 +20,11 @@ SSWorldView {
 
 	draw { // return a function to be evaluated inside window.userView.drawFunc
 
-		var z;
-		var f=0.5; //focal point for perspective drawing
-
 		^{
-
 			/////////////////////////////////////////////////////////////////
 			// draw static elements
 
-			Pen.strokeColor=Color.black;
+			Pen.strokeColor=Color.blue;
 			Pen.alpha=1;
 
 
@@ -33,20 +32,20 @@ SSWorldView {
 			// Rect.aboutPoint(center,half x distance, half y distance)
 			// remember that coordinates are changed respect to draw view
 
-			z= (0.5).linlin(0, 1, f, 1); //0.5 because our floor is half-away from the "real" considered floor
-
 			// draw sweet spot (on the floor)
-			Pen.addArc(0@0,z*world.sweetSpotSize,0,2pi);
+			Pen.addArc(0@0,f*world.sweetSpotSize,0,2pi);
 			Pen.stroke;
+
 			//ceiling
+			Pen.strokeColor=Color.black;
 			Pen.addRect(Rect.aboutPoint(0@0,world.dim.y/2,world.dim.x/2));
 			//floor
-			Pen.addRect(Rect.aboutPoint(0@0,z*world.dim.y/2,z*world.dim.x/2));
+			Pen.addRect(Rect.aboutPoint(0@0,f*world.dim.y/2,f*world.dim.x/2));
 			//wall lines
-			Pen.line(Point(world.dim.x/2,world.dim.y/2),Point(z*world.dim.x/2,z*world.dim.y/2));
-			Pen.line(Point(world.dim.x/2.neg,world.dim.y/2),Point(z*world.dim.x/2.neg,z*world.dim.y/2));
-			Pen.line(Point(world.dim.x/2,world.dim.y/2.neg),Point(z*world.dim.x/2,z*world.dim.y/2.neg));
-			Pen.line(Point(world.dim.x/2.neg,world.dim.y/2.neg),Point(z*world.dim.x/2.neg,z*world.dim.y/2.neg));
+			Pen.line(Point(world.dim.y/2,world.dim.x/2),Point(f*world.dim.y/2,f*world.dim.x/2));
+			Pen.line(Point(world.dim.y/2.neg,world.dim.x/2),Point(f*world.dim.y/2.neg,f*world.dim.x/2));
+			Pen.line(Point(world.dim.y/2,world.dim.x/2.neg),Point(f*world.dim.y/2,f*world.dim.x/2.neg));
+			Pen.line(Point(world.dim.y/2.neg,world.dim.x/2.neg),Point(f*world.dim.y/2.neg,f*world.dim.x/2.neg));
 			Pen.stroke;
 
 
@@ -64,7 +63,7 @@ SSWorldView {
 					var x=(obj.loc.y).neg;
 					var y=(obj.loc.x).neg;
 					// 0 is the floor, and world.dim.z/2 is the ceiling
-					var z=obj.loc.z.linlin(0,world.dim.z/2,world.dim.z/2,0); //invert min and max in the view
+					var z=obj.loc.z.linlin(0,world.dim.z,world.dim.z,0); //invert min and max in the view
 
 					var a,b;
 
@@ -82,7 +81,7 @@ SSWorldView {
 						newObj2=obj.copy.loc_(Cartesian(x*textScale,y*textScale,z*textScale)); //take care not to overwrite the actual object!!
 
 						Pen.scale(1/textScale,1/textScale);
-						Pen.stringAtPoint(newObj.name,Rect.aboutSSObject(newObj2,f:0.75).rightBottom,Font("Helvetica", 2.5),Color.red);
+						Pen.stringAtPoint(newObj.name,Rect.aboutSSObject(newObj2,f:f).rightBottom,Font("Helvetica", 2.5),Color.red);
 						Pen.scale(textScale,textScale);
 
 					};
@@ -92,33 +91,72 @@ SSWorldView {
 					// draw objects and shadows
 
 					switch (obj.shape)
-					{\point} { //draw point
+					{\point} {
 						Pen.strokeColor= Color.black;
-						Pen.strokeOval(Rect.aboutSSObject(newObj));
+						Pen.strokeOval(Rect.aboutSSObject(newObj,f:f));
 						//draw shadow
 						Pen.fillColor= Color.gray;
 						Pen.alpha=0.5;
-						//--place the shadow at the bottom
-						Pen.fillOval(Rect.aboutSSObject(newObj.loc_(Cartesian(x,y,world.dim.z/2))));
+						Pen.fillOval(Rect.aboutSSObject(newObj.loc_(Cartesian(x,y,world.dim.z)),f:f));
 					}
-					// TODO: ADD OTHER SHAPES
 
-					//default
-					{
-						Pen.fillColor= Color.black;
-						Pen.fillOval(Rect.aboutSSObject(newObj));
+					{\ring} {
+						var newZ= (world.dim.z-obj.loc.z/(world.dim.z)).linlin(0, 1, f, 1);
+						var rho = Cartesian(x*newZ,y*newZ).rho;
+
+						Pen.strokeColor= Color.black;
+						Pen.addArc(0@0,rho*f,0,2pi);
+						Pen.stroke;
 						//draw shadow
 						Pen.fillColor= Color.gray;
 						Pen.alpha=0.5;
-						//--place the shadow at the bottom
-						Pen.fillOval(Rect.aboutSSObject(newObj.loc_(Cartesian(x,y,world.dim.z/2))));
+						Pen.addArc(0@0,f*obj.locSph.rho,0,2pi);
+						Pen.stroke;
+					}
+
+					{\ext} {
+						var newZ= (world.dim.z-obj.loc.z/(world.dim.z)).linlin(0, 1, f, 1);
+						var rho = Cartesian(x*newZ,y*newZ).rho;
+						var azi = Cartesian(x,y).asPolar.angle; // since we change x and y for the window, we make this shortcut
+						var o1= obj.copy.locSph_(ele:obj.locSph.elevation+(obj.dElevation/2));
+						var newZ1= (world.dim.z-o1.loc.z/(world.dim.z)).linlin(0, 1, f, 1);
+						var rho1 = Cartesian(o1.loc.x*newZ1,o1.loc.y*newZ1).rho;
+
+						//don't show negative elevations --> clip
+						var o2= obj.copy.locSph_(ele:(obj.locSph.elevation-(obj.dElevation/2)).clip(0,pi/2));
+						var newZ2= (world.dim.z-o2.loc.z/(world.dim.z)).linlin(0, 1, f, 1);
+						var rho2 = Cartesian(o2.loc.x*newZ1,o2.loc.y*newZ1).rho;
+
+						Pen.fillColor = Color.grey;
+						Pen.strokeColor = Color.black;
+						Pen.alpha=0.6;
+						// Pen.addAnnularWedge(0@0, rho1*f, rho*f,azi-(obj.dAzimuth/2),obj.dAzimuth);
+						Pen.addAnnularWedge(0@0, rho1*f, rho2*f,azi-(obj.dAzimuth/2),obj.dAzimuth);
+						Pen.fillStroke;
+
+						//draw shadow
+						Pen.strokeColor= Color.gray;
+						Pen.alpha=0.5;
+						Pen.addArc(0@0,f*obj.locSph.rho,azi-(obj.dAzimuth/2),obj.dAzimuth);
+						Pen.stroke;
+
+
+					}
+
+					/*
+					Pen.strokeColor= Color.black;
+					Pen.addArc(0@0,f*obj.locSph.rho,azi-(obj.dAzimuth/2),obj.dAzimuth);
+					Pen.stroke;*/
+					// }
+
+					{ //default
 					};
 
 					/////////////////////////////////////////////////////////////////
 					// draw line between the object and its shadow
 					//TODO: change names!
-					a=Rect.aboutSSObject(newObj.loc_(Cartesian(x,y,z))).center;
-					b=Rect.aboutSSObject(newObj.loc_(Cartesian(x,y,world.dim.z/2))).center;
+					a=Rect.aboutSSObject(newObj.loc_(Cartesian(x,y,z)),f:f).center;
+					b=Rect.aboutSSObject(newObj.loc_(Cartesian(x,y,world.dim.z)),f:f).center;
 					Pen.line(a,b);
 					Pen.alpha=0.1;
 					Pen.stroke;
