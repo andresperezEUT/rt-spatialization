@@ -259,10 +259,12 @@ SpatialRender {
 				var point = Synth(synthName,[\busIn,newBus],target:newGroup,addAction:\addToTail);
 				var ring = Synth.newPaused(synthName++\Ring,[\busIn,newBus],target:newGroup,addAction:\addToTail);
 				var ext = Synth.newPaused(synthName++\Ext,[\busIn,newBus],target:newGroup,addAction:\addToTail);
+				var mer = Synth.newPause(synthName++\Mer,[\busIn,newBus],target:newGroup,addAction:\addToTail);
 				// add them to the shapeEncoders dictionary
 				newShapeEncodersDict.add(\point -> point);
 				newShapeEncodersDict.add(\ring -> ring);
 				newShapeEncodersDict.add(\ext -> ext);
+				newShapeEncodersDict.add(\mer -> mer);
 			}
 			{\vbap} {
 				Synth(synthName,[\busIn,newBus,\numChannels,vbapNumSpeakers,\speakerBuffer,vbapSpeakerBuffer],target:newGroup,addAction:\addToTail)
@@ -328,9 +330,10 @@ SpatialRender {
 		ambiEncoders=shapeEncoders.at(name); //this is a dictionary
 		// activate corresponding synth
 		switch(type)
-		{\ring} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(true); ambiEncoders.at(\ext).run(false)}
-		{\extended} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(true)};
-		/*point*/{ambiEncoders.at(\point).run(true); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(false)}
+		{\ring} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(true); ambiEncoders.at(\ext).run(false); ambiEncoders.at(\mer).run(false)}
+		{\extended} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(true); ambiEncoders.at(\mer).run(false)}
+		{\meridian} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(false); ambiEncoders.at(\mer).run(true)}
+		/*point*/{ambiEncoders.at(\point).run(true); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(false); ambiEncoders.at(\mer).run(false)}
 
 	}
 

@@ -81,19 +81,39 @@
 
 		SynthDef(\ambiEncoder1Ext,{ |busIn,azi=0,dAzi=0,ele=0,dEle=0,preserveArea=0|
 			var sig = In.ar(busIn);
-			var enc = AmbEnc1.ar(sig,azi,dAzi,ele,dEle,preserveArea);
+			var enc = AmbXEnc1.ar(sig,azi,dAzi,ele,dEle,preserveArea);
 			Out.ar(0,enc);
 		}).add;
 
 		SynthDef(\ambiEncoder2Ext,{|busIn,azi=0,dAzi=0,ele=0,dEle=0,preserveArea=0|
 			var sig = In.ar(busIn);
-			var enc = AmbEnc2.ar(sig,azi,dAzi,ele,dEle,preserveArea);
+			var enc = AmbXEnc2.ar(sig,azi,dAzi,ele,dEle,preserveArea);
 			Out.ar(0,enc);
 		}).add;
 
 		SynthDef(\ambiEncoder3Ext,{ |busIn,azi=0,dAzi=0,ele=0,dEle=0,preserveArea=0|
 			var sig = In.ar(busIn);
-			var enc = AmbEnc3.ar(sig,azi,dAzi,ele,dEle,preserveArea);
+			var enc = AmbXEnc3.ar(sig,azi,dAzi,ele,dEle,preserveArea);
+			Out.ar(0,enc);
+		}).add;
+
+		// ambisonics semi-meridian source encoders
+
+		SynthDef(\ambiEncoder1Mer,{ |busIn,azi=0|
+			var sig = In.ar(busIn);
+			var enc = AmbSMEnc1.ar(sig,azi);
+			Out.ar(0,enc);
+		}).add;
+
+		SynthDef(\ambiEncoder2Mer,{|busIn,azi=0|
+			var sig = In.ar(busIn);
+			var enc = AmbSMEnc2.ar(sig,azi);
+			Out.ar(0,enc);
+		}).add;
+
+		SynthDef(\ambiEncoder3Mer,{ |busIn,azi=0|
+			var sig = In.ar(busIn);
+			var enc = AmbSMEnc3.ar(sig,azi);
 			Out.ar(0,enc);
 		}).add;
 
