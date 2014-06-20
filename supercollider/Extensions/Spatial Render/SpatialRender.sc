@@ -30,7 +30,7 @@
 //
 // TODO:
 // -> support room/environmental parameters: send maxDistance for the delay!!! <-------
-//       create a room model inside the render
+// create a room model inside the render
 //
 // --> BORRAR OSCRECEIVERS EN LA FUNCIÓN CLOSE!!! QUE ESTÁ MAL IMPLEMENTADO
 //
@@ -160,19 +160,19 @@ SpatialRender {
 		};
 
 		receiverFunctions.add(name -> newFunc)
-/*		^{ |msg, time, replyAddr, recvPort|
-			switch(msg[0].asString)
+		/* ^{ |msg, time, replyAddr, recvPort|
+		switch(msg[0].asString)
 
-			{entityString++"/media/type"} {this.mediaType(name,msg[1]) }
-			{entityString++"/media/channel"} { this.mediaChannel(name,msg[1])}
-			{entityString++"/position"} {this.setPosition(name,msg[1],msg[2],msg[3],msg[4])}
-			{entityString++"/type"} {this.sourceType(name,msg[1])}
-			{entityString++"/present"} {this.sourcePresent(name,msg[1])}
-			{entityString++"/width"} {this.sourceWidth(name,msg[1],msg[2])}
-			{entityString++"/preserveArea"} {this.preserveArea(name,msg[1])}
-			{
+		{entityString++"/media/type"} {this.mediaType(name,msg[1]) }
+		{entityString++"/media/channel"} { this.mediaChannel(name,msg[1])}
+		{entityString++"/position"} {this.setPosition(name,msg[1],msg[2],msg[3],msg[4])}
+		{entityString++"/type"} {this.sourceType(name,msg[1])}
+		{entityString++"/present"} {this.sourcePresent(name,msg[1])}
+		{entityString++"/width"} {this.sourceWidth(name,msg[1],msg[2])}
+		{entityString++"/preserveArea"} {this.preserveArea(name,msg[1])}
+		{
 
-			};
+		};
 		}*/
 	}
 
@@ -193,19 +193,19 @@ SpatialRender {
 			this.addReceiverFunction(name);
 			thisProcess.addOSCRecvFunc(receiverFunctions.at(name));
 
-/*			thisProcess.addOSCRecvFunc({ |msg, time, replyAddr, recvPort|
-				switch(msg[0].asString)
+			/* thisProcess.addOSCRecvFunc({ |msg, time, replyAddr, recvPort|
+			switch(msg[0].asString)
 
-				{entityString++"/media/type"} {this.mediaType(name,msg[1]) }
-				{entityString++"/media/channel"} { this.mediaChannel(name,msg[1])}
-				{entityString++"/position"} {this.setPosition(name,msg[1],msg[2],msg[3],msg[4])}
-				{entityString++"/type"} {this.sourceType(name,msg[1])}
-				{entityString++"/present"} {this.sourcePresent(name,msg[1])}
-				{entityString++"/width"} {this.sourceWidth(name,msg[1],msg[2])}
-				{entityString++"/preserveArea"} {this.preserveArea(name,msg[1])}
-				{
+			{entityString++"/media/type"} {this.mediaType(name,msg[1]) }
+			{entityString++"/media/channel"} { this.mediaChannel(name,msg[1])}
+			{entityString++"/position"} {this.setPosition(name,msg[1],msg[2],msg[3],msg[4])}
+			{entityString++"/type"} {this.sourceType(name,msg[1])}
+			{entityString++"/present"} {this.sourcePresent(name,msg[1])}
+			{entityString++"/width"} {this.sourceWidth(name,msg[1],msg[2])}
+			{entityString++"/preserveArea"} {this.preserveArea(name,msg[1])}
+			{
 
-				};
+			};
 			})*/
 		}
 	}
@@ -222,16 +222,16 @@ SpatialRender {
 			if (verbose) {
 				"NEW SOURCE---".postln;
 				("name: "++name.asString).postln;
-				//	("channel: "++channel.asString).postln;
+				// ("channel: "++channel.asString).postln;
 			};
 
 			// general schema
 			//
-			//                 ................................newGroup................................
-			//                |                                                                        |
-			//                |                                                                        |
-			//----(In.ar)---> [distance] ----(newBus)---> [ambiEncoder, ambiEncoderRing, ambiEncoderExt] -/-/-(Out.ar)-/-/->
-			//                                       \--> [vbapEncoder] -/-/-(Out.ar)-/-/->
+			// ................................newGroup................................
+			// |                                                                      |
+			// |                                                                      |
+			// ----(In.ar)---> [distance] ----(newBus)---> [ambiEncoder, ambiEncoderRing, ambiEncoderExt] -/-/-(Out.ar)-/-/->
+			//                                        \--> [vbapEncoder] -/-/-(Out.ar)-/-/->
 
 			// actions
 			// 1. create group
@@ -259,7 +259,7 @@ SpatialRender {
 				var point = Synth(synthName,[\busIn,newBus],target:newGroup,addAction:\addToTail);
 				var ring = Synth.newPaused(synthName++\Ring,[\busIn,newBus],target:newGroup,addAction:\addToTail);
 				var ext = Synth.newPaused(synthName++\Ext,[\busIn,newBus],target:newGroup,addAction:\addToTail);
-				var mer = Synth.newPause(synthName++\Mer,[\busIn,newBus],target:newGroup,addAction:\addToTail);
+				var mer = Synth.newPaused(synthName++\Mer,[\busIn,newBus],target:newGroup,addAction:\addToTail);
 				// add them to the shapeEncoders dictionary
 				newShapeEncodersDict.add(\point -> point);
 				newShapeEncodersDict.add(\ring -> ring);
@@ -273,7 +273,7 @@ SpatialRender {
 
 			//TODO: check if source already exists
 
-			/*			encoders.add(channel -> Synth(\ambiEncoder,args:[\busIn,channel,\r,r,\azi,azimuth,\ele,elevation],addAction:'addToTail'))*/
+			/* encoders.add(channel -> Synth(\ambiEncoder,args:[\busIn,channel,\r,r,\azi,azimuth,\ele,elevation],addAction:'addToTail'))*/
 		}
 	}
 
@@ -281,7 +281,8 @@ SpatialRender {
 		encoders.at(name).set(\externalIn,channel);
 
 		if (verbose) {
-			"NEW SOURCE---".postln;
+			"*********".postln;
+			("name: "++name).postln;
 			("channel: "++channel.asString).postln;
 		};
 	}
@@ -403,5 +404,3 @@ SpatialRender {
 		oscLogger.close;
 	}
 }
-
-
