@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, May 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, September 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 //
-// Render.sc
+// SpatialRender.sc
 //
 // This class implements a spatial render
 //
@@ -32,6 +32,8 @@
 // -> support room/environmental parameters: send maxDistance for the delay!!! <-------
 // create a room model inside the render
 //
+//   -> TODO: binaural options: change model, subjectID "dynamically"
+//
 // --> BORRAR OSCRECEIVERS EN LA FUNCIÓN CLOSE!!! QUE ESTÁ MAL IMPLEMENTADO
 //
 ////////////////////////////////////////////////////////////////////////////
@@ -42,11 +44,17 @@ SpatialRender {
 	var <port;
 	var <sourceAddress;
 
-	var <>encoders;
+	var <>encoders; // <---- should it be only < ???
+	var <encodersReferences;
+	var internalBuses;
+
 	var shapeEncoders;
 	var <spatialTechnique;
 	var <synthName;
 	var <vbapSpeakerConf,<vbapSpeakerBuffer,<vbapNumSpeakers;
+
+	var <binauralDecoder;
+	var <binauralSubjectID;
 
 	var <>verbose=true;
 
@@ -56,11 +64,11 @@ SpatialRender {
 
 	var receiverFunctions;
 
-	*new{ |server, port=57120, spatialTechnique=\ambisonics, ambiOrder=3, vbapSpeakerConf|
-		^super.new.init(server,port,spatialTechnique,ambiOrder,vbapSpeakerConf);
+	*new{ |server, port=57120, spatialTechnique=\ambisonics, ambiOrder=3, vbapSpeakerConf, hrtfHead = \listen, hrtfID = 1002 |
+		^super.new.init(server,port,spatialTechnique,ambiOrder,vbapSpeakerConf,hrtfHead,hrtfID);
 	}
 
-	init { |myServer,myPort,myTechnique,ambiOrder,myVbapSpeakerConf|
+	init { |myServer,myPort,myTechnique,ambiOrder,myVbapSpeakerConf,hrtfHead,hrtfID|
 
 		// // // // INIT FUNCTIONALITY // // // //
 		server = myServer;
@@ -80,7 +88,15 @@ SpatialRender {
 			{2} {\ambiEncoder2}
 			{3} {\ambiEncoder3}
 		}
-		{\vbap} {synthName = \vbapEncoder};
+
+		{\vbap} {
+			synthName = \vbapEncoder
+		}
+
+		{\binaural} {
+			synthName = \binauralEncoder
+		}
+		;
 
 		//init vbap synthdef
 		if (myVbapSpeakerConf.isNil.not) {
@@ -98,6 +114,9 @@ SpatialRender {
 
 
 		encoders=Dictionary.new;
+		encodersReferences = Dictionary.new;
+		internalBuses = Dictionary.new;
+
 		shapeEncoders=Dictionary.new;
 
 		receiverFunctions=Dictionary.new;
@@ -109,6 +128,9 @@ SpatialRender {
 
 
 		// // // // INIT SYNTHDEFS // // // //
+
+		// binaural init
+		this.setBinauralDecoder(hrtfHead,hrtfID);
 
 		this.initSynthDefs;
 
@@ -210,10 +232,15 @@ SpatialRender {
 		}
 	}
 
+
+	// all synths functionality is provided here; the message is sended just after newSource
 	mediaType { |name, type|
 		if (type == \jack) {
 			var newGroup;
 			var newBus;
+
+			var distanceSynth;
+			var pannerSynth;
 
 			var newShapeEncodersDict;
 
@@ -243,14 +270,16 @@ SpatialRender {
 			newGroup = Group.new;
 			encoders.add(name -> newGroup);
 
+
 			newShapeEncodersDict = Dictionary.new;
 			shapeEncoders.add(name -> newShapeEncodersDict);
 
-			// 2. create mono audio bus
+			// 2. create mono audio bus, add to the reference dictionary
 			newBus = Bus.audio(server,1);
+			internalBuses.add(name -> newBus);
 
 			// 3. create distance synth, add to head of group
-			Synth(\distanceEncoder,[\externalIn,channel,\r,1,\busOut,newBus],target:newGroup,addAction:\addToHead);
+			distanceSynth = Synth(\distanceEncoder,[\externalIn,channel,\r,1,\busOut,newBus],target:newGroup,addAction:\addToHead);
 
 			// 4, create encoding synth, add to tail group
 			switch(spatialTechnique)
@@ -265,10 +294,20 @@ SpatialRender {
 				newShapeEncodersDict.add(\ring -> ring);
 				newShapeEncodersDict.add(\ext -> ext);
 				newShapeEncodersDict.add(\mer -> mer);
+
+				pannerSynth = point; //default synth
 			}
+
 			{\vbap} {
-				Synth(synthName,[\busIn,newBus,\numChannels,vbapNumSpeakers,\speakerBuffer,vbapSpeakerBuffer],target:newGroup,addAction:\addToTail)
-			};
+				pannerSynth = Synth(synthName,[\busIn,newBus,\numChannels,vbapNumSpeakers,\speakerBuffer,vbapSpeakerBuffer],target:newGroup,addAction:\addToTail)
+			}
+
+			{\binaural} {
+				pannerSynth = Synth(synthName,[\busIn,newBus,\subjectID,binauralSubjectID],target:newGroup,addAction:\addToTail);
+			}
+			;
+
+			encodersReferences.add(name -> [distanceSynth, pannerSynth]);
 
 
 			//TODO: check if source already exists
@@ -304,6 +343,11 @@ SpatialRender {
 
 		if (spatialTechnique==\ambisonics) { // convert to rad
 			azimuth = azimuth.degree2rad;
+			elevation = elevation.degree2rad;
+		};
+
+		if (spatialTechnique==\binaural) { // convert to rad
+			azimuth = azimuth.degree2rad.neg;
 			elevation = elevation.degree2rad;
 		};
 
@@ -369,6 +413,40 @@ SpatialRender {
 		// send parameters to all nodes inside their group
 		encoders.at(name).set(\preserveArea,preserveArea);
 	}
+
+
+	setBinauralDecoder { |decoderType, subjectID|
+
+		// load new data
+		binauralSubjectID = subjectID;
+		binauralDecoder  = switch(decoderType)
+		{\spherical} {FoaDecoderKernel.newSpherical(binauralSubjectID,server)}
+		{\listen} {FoaDecoderKernel.newListen(binauralSubjectID,server)}
+		{\cipic} {FoaDecoderKernel.newCIPIC(binauralSubjectID,server)}
+		;
+
+		// update synthdef
+		this.initBinauralSynthDef;
+
+		// reload synths
+		encodersReferences.keys.do{ |key|
+			var pannerSynth = encodersReferences[key][1];
+
+			// free current synth
+			pannerSynth.free;
+
+			// create new synth
+			pannerSynth = Synth(\binauralEncoder,[\busIn,internalBuses.at(key),\subjectID,binauralSubjectID],target:encoders.at(key),addAction:\addToTail);
+
+			// save reference in the same place
+			encodersReferences.at(key).put(1,pannerSynth);
+
+		}
+
+	}
+
+
+
 
 	// if source channel does not exist, will throw error, since nil.at() is not defined
 	// is not the case for the other functions
