@@ -1,3 +1,29 @@
+////////////////////////////////////////////////////////////////////////////
+//
+// Copyright ANDRÉS PÉREZ LÓPEZ, September 2014 [contact@andresperezlopez.com]
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; withot even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>
+//
+////////////////////////////////////////////////////////////////////////////
+//
+// SpatialRender_synthdefs.sc
+//
+// Synth definitions for the Spatial Render class
+// loaded in SpatialRender.init
+//
+////////////////////////////////////////////////////////////////////////////
+
 + SpatialRender {
 
 
@@ -125,5 +151,19 @@
 			var enc = VBAP.ar(vbapNumSpeakers,sig,vbapSpeakerBuffer.bufnum,azi,ele);
 			Out.ar(0,enc);
 		}).add;
+
+		// this.initBinauralSynthDef;
+	}
+
+	initBinauralSynthDef {
+		// Binaural
+		{
+			SynthDef(\binauralEncoder,{ |busIn,azi=0,ele=0|
+				var sig = In.ar(busIn);
+				var enc = FoaPanB.ar(sig,azi,ele);
+				var dec = FoaDecode.ar(enc, binauralDecoder);
+				Out.ar(0,dec);
+			}).add;
+		}.defer(1); // give time to the binauralDecoder to be loaded
 	}
 }
