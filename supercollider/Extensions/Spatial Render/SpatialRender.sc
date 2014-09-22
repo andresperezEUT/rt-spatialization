@@ -24,9 +24,11 @@
 // Render instance receives OSC messages from an external spatialization software
 // and applies spatial coefficients to the existing input channels
 //
-// Each different source/channel is tracked inside <>encoders dictionary
+// Each different source/channel is tracked inside encoders dictionary
 //
 // Distance cues are supported by means of distance attenuation and air absorption simulation
+//
+// ATK Binaural SynthDefs are treated specially, since head models should be loaded into buffers before instanciating Synths...
 //
 // TODO:
 // -> support room/environmental parameters: send maxDistance for the delay!!! <-------
@@ -44,17 +46,25 @@ SpatialRender {
 	var <port;
 	var <sourceAddress;
 
-	var <>encoders; // <---- should it be only < ???
+	// Dictionary with references to the Synth groups (one for each track)
+	var <encoders;
+	// Dictionary with references to the individual synths: [\distanceEncoder, \pannerEncoder]
 	var <encodersReferences;
-	var internalBuses;
+	//Dictionary with references to the internal audio buses between synths
+	var <internalBuses;
 
-	var shapeEncoders;
+
 	var <spatialTechnique;
 	var <synthName;
 	var <vbapSpeakerConf,<vbapSpeakerBuffer,<vbapNumSpeakers;
 
 	var <binauralDecoder;
 	var <binauralSubjectID;
+
+	// Dictionary storing ambisonics parameters for each source: [order,shape]
+	var <ambisonicsParameters;
+	var <defaultAmbisonicsOrder;
+	var <defaultAmbisonicsShape;
 
 	var <>verbose=true;
 
@@ -98,6 +108,10 @@ SpatialRender {
 		}
 		;
 
+		// init ambisonics defaults
+		defaultAmbisonicsOrder = 3;
+		defaultAmbisonicsShape = \point;
+
 		//init vbap synthdef
 		if (myVbapSpeakerConf.isNil.not) {
 
@@ -117,7 +131,7 @@ SpatialRender {
 		encodersReferences = Dictionary.new;
 		internalBuses = Dictionary.new;
 
-		shapeEncoders=Dictionary.new;
+		ambisonicsParameters = Dictionary.new;
 
 		receiverFunctions=Dictionary.new;
 
@@ -182,20 +196,6 @@ SpatialRender {
 		};
 
 		receiverFunctions.add(name -> newFunc)
-		/* ^{ |msg, time, replyAddr, recvPort|
-		switch(msg[0].asString)
-
-		{entityString++"/media/type"} {this.mediaType(name,msg[1]) }
-		{entityString++"/media/channel"} { this.mediaChannel(name,msg[1])}
-		{entityString++"/position"} {this.setPosition(name,msg[1],msg[2],msg[3],msg[4])}
-		{entityString++"/type"} {this.sourceType(name,msg[1])}
-		{entityString++"/present"} {this.sourcePresent(name,msg[1])}
-		{entityString++"/width"} {this.sourceWidth(name,msg[1],msg[2])}
-		{entityString++"/preserveArea"} {this.preserveArea(name,msg[1])}
-		{
-
-		};
-		}*/
 	}
 
 
@@ -208,27 +208,11 @@ SpatialRender {
 		^{ |msg, time, addr, recvPort|
 			var name = msg[1];
 
-			//var entityString = "/spatdif/source/"++name;
-
 			// create responders for this new source
 
 			this.addReceiverFunction(name);
 			thisProcess.addOSCRecvFunc(receiverFunctions.at(name));
 
-			/* thisProcess.addOSCRecvFunc({ |msg, time, replyAddr, recvPort|
-			switch(msg[0].asString)
-
-			{entityString++"/media/type"} {this.mediaType(name,msg[1]) }
-			{entityString++"/media/channel"} { this.mediaChannel(name,msg[1])}
-			{entityString++"/position"} {this.setPosition(name,msg[1],msg[2],msg[3],msg[4])}
-			{entityString++"/type"} {this.sourceType(name,msg[1])}
-			{entityString++"/present"} {this.sourcePresent(name,msg[1])}
-			{entityString++"/width"} {this.sourceWidth(name,msg[1],msg[2])}
-			{entityString++"/preserveArea"} {this.preserveArea(name,msg[1])}
-			{
-
-			};
-			})*/
 		}
 	}
 
@@ -241,8 +225,6 @@ SpatialRender {
 
 			var distanceSynth;
 			var pannerSynth;
-
-			var newShapeEncodersDict;
 
 			var channel = 0; //default
 
@@ -270,10 +252,6 @@ SpatialRender {
 			newGroup = Group.new;
 			encoders.add(name -> newGroup);
 
-
-			newShapeEncodersDict = Dictionary.new;
-			shapeEncoders.add(name -> newShapeEncodersDict);
-
 			// 2. create mono audio bus, add to the reference dictionary
 			newBus = Bus.audio(server,1);
 			internalBuses.add(name -> newBus);
@@ -281,21 +259,15 @@ SpatialRender {
 			// 3. create distance synth, add to head of group
 			distanceSynth = Synth(\distanceEncoder,[\externalIn,channel,\r,1,\busOut,newBus],target:newGroup,addAction:\addToHead);
 
+			// *. initialize default ambisonics parameters
+			// TODO: move this to a more elegant place??
+			ambisonicsParameters.add(name -> [defaultAmbisonicsOrder,defaultAmbisonicsShape]);
+
 			// 4, create encoding synth, add to tail group
 			switch(spatialTechnique)
 			{\ambisonics} {
-				// initialize with point source encoder, create paused other synths
-				var point = Synth(synthName,[\busIn,newBus],target:newGroup,addAction:\addToTail);
-				var ring = Synth.newPaused(synthName++\Ring,[\busIn,newBus],target:newGroup,addAction:\addToTail);
-				var ext = Synth.newPaused(synthName++\Ext,[\busIn,newBus],target:newGroup,addAction:\addToTail);
-				var mer = Synth.newPaused(synthName++\Mer,[\busIn,newBus],target:newGroup,addAction:\addToTail);
-				// add them to the shapeEncoders dictionary
-				newShapeEncodersDict.add(\point -> point);
-				newShapeEncodersDict.add(\ring -> ring);
-				newShapeEncodersDict.add(\ext -> ext);
-				newShapeEncodersDict.add(\mer -> mer);
-
-				pannerSynth = point; //default synth
+				var synthName = this.getAmbisonicsSynthName(name);
+				pannerSynth = Synth(synthName,[\busIn,newBus],target:newGroup,addAction:\addToTail);
 			}
 
 			{\vbap} {
@@ -358,30 +330,6 @@ SpatialRender {
 	}
 
 
-	sourceType { |name,type|
-
-		var ambiEncoders;
-
-		if (verbose) {
-			"*********".postln;
-			("name: "++name).postln;
-			("type: "++type).postln;
-		};
-
-		// TODO: make this more elegant (ambi encoders subgroup, msg bundle, etc...)
-
-		///////////////// CAMBIAR ESTO A SYMBOLS CON LOS NOMBRES!!!
-
-		ambiEncoders=shapeEncoders.at(name); //this is a dictionary
-		// activate corresponding synth
-		switch(type)
-		{\ring} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(true); ambiEncoders.at(\ext).run(false); ambiEncoders.at(\mer).run(false)}
-		{\extended} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(true); ambiEncoders.at(\mer).run(false)}
-		{\meridian} {ambiEncoders.at(\point).run(false); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(false); ambiEncoders.at(\mer).run(true)}
-		/*point*/{ambiEncoders.at(\point).run(true); ambiEncoders.at(\ring).run(false); ambiEncoders.at(\ext).run(false); ambiEncoders.at(\mer).run(false)}
-
-	}
-
 	sourcePresent { |name,present|
 		encoders.at(name).run(present);
 	}
@@ -414,33 +362,123 @@ SpatialRender {
 		encoders.at(name).set(\preserveArea,preserveArea);
 	}
 
+	// TODO: add spatDIF compatibility
+	setSpatializationTechnique { |newSpatialTechnique|
+		spatialTechnique = newSpatialTechnique;
 
+	}
+
+
+	getAmbisonicsSynthName { |source|
+		var order = ambisonicsParameters.at(source).at(0);
+		var shape = ambisonicsParameters.at(source).at(1);
+
+		var name = \ambiEncoder;
+		var extName;
+
+		extName = switch (shape)
+		{\ring} {\Ring}
+		{\extended} {\Ext}
+		{\meridian} {\Mer}
+		{\point} {""};
+
+		^(name ++ order ++ extName).asSymbol;
+	}
+
+
+	// TODO: maybe check if parameters are not changed?
+
+	setAmbisonicsParameters { |source, order = 3, shape = \point|
+
+		// only apply if current technique is ambisonics
+		if (spatialTechnique == \ambisonics) {
+
+			// apply to all sources
+			if (source.isNil) {
+				encodersReferences.keys.do{ |key|
+					var pannerSynth;
+					var synthName;
+
+					// set new ambisonics parameters
+					ambisonicsParameters.at(key).put(0,order);
+					ambisonicsParameters.at(key).put(0,shape);
+					synthName = this.getAmbisonicsSynthName(key);
+
+					// free current synth
+					pannerSynth = encodersReferences[key][1];
+					pannerSynth.free;
+
+					// create new synth
+					pannerSynth = Synth(synthName,[\busIn,internalBuses.at(key)],target:encoders.at(key),addAction:\addToTail);
+
+					// save reference in the same place
+					encodersReferences.at(key).put(1,pannerSynth);
+				}
+			} {
+			// apply to a specific source
+				var pannerSynth;
+				var synthName;
+
+				// set new ambisonics parameters
+				ambisonicsParameters.at(source).put(0,order);
+				ambisonicsParameters.at(source).put(1,shape);
+				synthName = this.getAmbisonicsSynthName(source);
+
+				// free current synth
+				pannerSynth = encodersReferences[source][1];
+				pannerSynth.free;
+
+				// create new synth
+				pannerSynth = Synth(synthName,[\busIn,internalBuses.at(source)],target:encoders.at(source),addAction:\addToTail);
+
+				// save reference in the same place
+				encodersReferences.at(source).put(1,pannerSynth);
+
+			}
+		} {
+			"Ambisonics is not the current spatialization technique".warn;
+		}
+	}
+
+	getBinauralParameters {
+
+
+	}
+
+
+	// TODO: add spatDIF compatibility
 	setBinauralDecoder { |decoderType, subjectID|
 
-		// load new data
-		binauralSubjectID = subjectID;
-		binauralDecoder  = switch(decoderType)
-		{\spherical} {FoaDecoderKernel.newSpherical(binauralSubjectID,server)}
-		{\listen} {FoaDecoderKernel.newListen(binauralSubjectID,server)}
-		{\cipic} {FoaDecoderKernel.newCIPIC(binauralSubjectID,server)}
-		;
+		// only apply if current spatial technique is binaural
+		if (spatialTechnique == \binaural) {
 
-		// update synthdef
-		this.initBinauralSynthDef;
+			// load new data
+			binauralSubjectID = subjectID;
+			binauralDecoder  = switch(decoderType)
+			{\spherical} {FoaDecoderKernel.newSpherical(binauralSubjectID,server)}
+			{\listen} {FoaDecoderKernel.newListen(binauralSubjectID,server)}
+			{\cipic} {FoaDecoderKernel.newCIPIC(binauralSubjectID,server)}
+			;
 
-		// reload synths
-		encodersReferences.keys.do{ |key|
-			var pannerSynth = encodersReferences[key][1];
+			// update synthdef
+			this.initBinauralSynthDef;
 
-			// free current synth
-			pannerSynth.free;
+			// reload synths
+			encodersReferences.keys.do{ |key|
+				var pannerSynth = encodersReferences[key][1];
 
-			// create new synth
-			pannerSynth = Synth(\binauralEncoder,[\busIn,internalBuses.at(key),\subjectID,binauralSubjectID],target:encoders.at(key),addAction:\addToTail);
+				// free current synth
+				pannerSynth.free;
 
-			// save reference in the same place
-			encodersReferences.at(key).put(1,pannerSynth);
+				// create new synth
+				pannerSynth = Synth(\binauralEncoder,[\busIn,internalBuses.at(key),\subjectID,binauralSubjectID],target:encoders.at(key),addAction:\addToTail);
 
+				// save reference in the same place
+				encodersReferences.at(key).put(1,pannerSynth);
+
+			}
+		} {
+			"Binaural is not the current spatialization technique".warn;
 		}
 
 	}
@@ -468,7 +506,6 @@ SpatialRender {
 			encoders.at(name).free; //group.freeAll;
 			//then remove the association
 			encoders.removeAt(name);
-			shapeEncoders.removeAt(name);
 		}
 	}
 
