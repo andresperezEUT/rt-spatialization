@@ -1,4 +1,28 @@
-// TODO: add sliders for (un)center the screen
+////////////////////////////////////////////////////////////////////////////
+//
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; withot even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>
+//
+////////////////////////////////////////////////////////////////////////////
+//
+// SSWorldView.sc
+// Based on RedUniverse quark (by redFrik)
+//
+// This class implements the drawing functionality that allows to visualize a SSWorld
+//
+////////////////////////////////////////////////////////////////////////////
 
 SSWorldView {
 
@@ -58,6 +82,8 @@ SSWorldView {
 
 			if (world.objects.size > 0 ) {
 				world.objects.do { |obj|
+
+					if (obj.present)  {
 
 					// mirror dimensions!!
 					var x=(obj.loc.y).neg;
@@ -161,6 +187,7 @@ SSWorldView {
 					Pen.alpha=0.1;
 					Pen.stroke;
 				}
+			}
 			};
 		};
 
