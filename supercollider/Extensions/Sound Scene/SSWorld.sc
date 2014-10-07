@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, May 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 //
-// SSWindow.sc
+// SSWorld.sc
 // Based on RedUniverse quark (by redFrik)
 //
 // This class implements a Sound Scene World, which is a special case of RedWorld type 1 (without walls)
@@ -32,6 +32,9 @@
 //
 // TODO:
 // -> OBJECT GROUPING AND HIERARCHIES
+//
+// !!!!!!!!!!!!!!!!!!!!!!! guardar los objectos por nombre y no por canal en var::objects!!!!
+//                  despues de eso, arreglar removeByName
 ////////////////////////////////////////////////////////////////////////////
 
 SSWorld : RedWorld1 { //default with walls
@@ -40,7 +43,7 @@ SSWorld : RedWorld1 { //default with walls
 
 	var time, <>stepFreq;
 
-	var <window;
+	var window;
 
 	var <>rDiff, <>aziDiff, <>eleDiff;
 
@@ -50,34 +53,38 @@ SSWorld : RedWorld1 { //default with walls
 
 	var <numObjects=0;
 
-	var <objectsID;
+	var objectsID;
 
-	var <worldView;
+	var worldView;
 
-	var <>sweetSpotSize=2;
+	var <sweetSpotSize=2;
 
 	var <maxDistance; //maximum distance on the room from the center
 
-	*new {|dim, gravity, maxVel, damping, friction=0.01, timeStep=60|
+	var <>receivingFromServer = false;
+
+	*new {|dim, gravity, maxVel, damping, friction=0.01, timeStep=60, netAddr|
 
 		^super.newCopyArgs(
 			dim !? {if (dim.isArray) {Cartesian.fromArray(dim)} {dim} } ?? {Cartesian(10,10,5)},
-			gravity !? {if (gravity.isArray) {Cartesian.fromArray(gravity)} {gravity} } ?? {Cartesian(0,0.98,0)},
-			maxVel ? 10,
+			gravity !? {if (gravity.isArray) {Cartesian.fromArray(gravity)} {gravity} } ?? {Cartesian(0,0,0.98)},
+			maxVel ? 100,
 			damping ? 0.25
-		).initSSWorld(friction,timeStep);
+		).initSSWorld(friction,timeStep,netAddr);
 	}
 
-	initSSWorld{ |myFriction,mystepFreq|
+	initSSWorld{ |myFriction,mystepFreq,myNetAddr|
 		friction=myFriction;
 		stepFreq=mystepFreq;
+		address= myNetAddr ? NetAddr.localAddr;
+
 		//defaults
 		rDiff=0.05; ////////// <---- check bibliography!!
 		aziDiff=1.degree2rad;
 		eleDiff=5.degree2rad; ////////// <---- check bibliography!!
 		viewDiff=false;
 
-		address=NetAddr.localAddr;
+
 
 		maxDistance=this.getMaxDistance;
 
@@ -94,7 +101,9 @@ SSWorld : RedWorld1 { //default with walls
 		// task managing objects update and time passing
 		time=Task({
 			inf.do{
-				this.update;
+				if (receivingFromServer.not) {
+					this.update;
+				};
 				stepFreq.reciprocal.wait;
 			}
 		}).start;
@@ -110,11 +119,57 @@ SSWorld : RedWorld1 { //default with walls
 		RedUniverse.add(this);	//add world to universe
 		this.prInitSurroundings;
 
+
+		//////////////////// RECEIVERS FROM SPATIALRENDER ///////////
+		OSCdef(\fromSpatialRender,{ |msg|
+			var cmd = msg[1];
+			var sourceName = msg[2];
+			var args = msg[3..];
+
+			if (this.getObject(sourceName).isNil) { //create object
+				this.add(SSObject.new(this,name:sourceName,registerInWorld:false),internal:false);
+			};
+
+
+			switch (cmd)
+			{\mediaType}  {}
+			{\mediaChannel} {
+				this.getObject(sourceName).setChannel(msg[3],internal:false)
+			}
+			{\setPosition} {
+				var azi = args[0];
+				var ele = args[1];
+				var r = args[2];
+				this.getObject(sourceName).locSph_(Spherical(r,azi,ele));
+			}
+			{\sourcePresent} {
+				this.getObject(sourceName).present_(msg[3].asFloat.asBoolean,internal:false)
+			}
+			{\setSourceWidth} {
+				this.getObject(sourceName).dAzimuth_(args[0],internal:false);
+				this.getObject(sourceName).dElevation_(args[1],internal:false);
+			}
+			{\preserveArea} {
+				this.getObject(sourceName).preserveArea_(msg[3],internal:false)
+			};
+
+			receivingFromServer = true;
+			this.updateView;
+
+
+		},"/ssworld",nil);
+
 	}
 
 	getMaxDistance {
 		var extreme=dim*[0.5,0.5,1];
 		^extreme.rho;
+	}
+
+	setSweetSpotSize { |newSize|
+		sweetSpotSize = newSize;
+		//refresh view
+		this.updateView;
 	}
 
 	dim_{ |value|
@@ -126,7 +181,7 @@ SSWorld : RedWorld1 { //default with walls
 	}
 
 
-	add { |obj|
+	add { |obj,internal=true|
 
 		// super.add(obj); // save object in objects array and set object's world to this
 		objects.add(numObjects -> obj);
@@ -141,24 +196,40 @@ SSWorld : RedWorld1 { //default with walls
 		numObjects=numObjects+1;
 
 		// send message to render
-		this.sendMsg(\new,obj);
-		this.sendMsg(\position,obj);
+		if (internal) {
+			this.sendMsg(\new,obj);
+			this.sendMsg(\position,obj);
+
+		};
 
 		//refresh view
 		this.updateView;
 
 	}
 
-	remove { |obj|
-		objects.findKeyForValue(obj) !? { |key|
+	remove { |obj,internal=true|
+		var key = objects.findKeyForValue(obj);
+		if (key.isNil.not) {
 			// remove object from objects list
 			objects.removeAt(key);
 			// remove object name from objectsID list
 			objectsID.removeAt(key);
 			//refresh view
 			this.updateView;
-			// send message to render
-			this.sendMsg(\end,obj);
+
+			if (internal) {
+				// send message to render
+				this.sendMsg(\end,obj);
+			}
+		}
+	}
+
+	removeByName { |name|
+		var key = objectsID.findKeyForValue(name);
+		if (key.isNil.not) {
+			this.remove(objects.at(key));
+		} {
+			("Object " ++ name ++ " not found").warn;
 		}
 	}
 
@@ -232,7 +303,7 @@ SSWorld : RedWorld1 { //default with walls
 	};
 	}*/
 
-	contain {|ssObj|
+	contain {|ssObj| // hold object inside world
 		var arrayDim=dim.asArray;
 		var loc, vel;
 
