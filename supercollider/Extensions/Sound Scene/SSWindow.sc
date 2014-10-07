@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, April 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@
 
 SSWindow : RedQWindow {
 
-	var <>dim; //dimensions of the world which is represented, as a SSVector
+	var <>dim; //dimensions of the world which is represented
 	var widthSlider=20;
 	var zoomSlider;
 	var <>zoom = 55;
