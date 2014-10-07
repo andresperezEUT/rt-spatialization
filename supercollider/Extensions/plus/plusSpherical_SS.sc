@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, April 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, September 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,32 +23,41 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-+Spherical {
-
++ Spherical {
+	// convenience methods for creation
+	*fromArray { |array|
+		^this.new(array@0,array@1,array@2)
+	}
 	// not to confuse phi and theta due to different nomenclatures!
-
 	azimuth {
 		^theta;
 	}
-
 	azimuth_ { |angle|
 		theta=angle;
 	}
-
 	addAzimuth { |angle|
 		this.azimuth_(this.azimuth+angle)
 	}
-
 	elevation {
 		^phi;
 	}
-
 	elevation_ { |angle|
 		phi=angle;
 	}
-
 	addElevation { |angle|
 		this.elevation_(this.elevation+angle)
 	}
+}
 
++ Cartesian {
+
+	// convenience methods for creation
+	*fromArray { |array|
+		^this.new(array@0,array@1,array@2)
+	}
+	// other useful stuff
+	any { | function |
+		this.asArray.do {|elem, i| if (function.value(elem, i)) { ^true } }
+		^false;
+	}
 }
