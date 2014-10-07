@@ -26,43 +26,79 @@
 
 + SpatialRender {
 
-
-	// // // // SYNTH DEFINITIONS // // // // // // // // // // // // // // // // // // // //
-
-	//TODO: ADD DELAY!
-	//TODO: TRY OUT DIFFERENT INVERSE R LAWS
-	//TODO: IMPLEMENT EARLY REFLECTIONS
-
 	initSynthDefs {
 
-		SynthDef(\distanceEncoder,{ |externalIn=0,r=1,busOut|
-			var sig, out;
-			var filterfreq, filteramp;
+		/////////////// DISTANCE ENCODERS  ///////////////
+		//
+		//   from SPATDIF SPECIFICATION, APPENDIX F:
+		//   http://redmine.spatdif.org/attachments/download/105/SpatDIF-specs-V0.3.pdf
+		//
 
-			// get signal from AudioIn
+		// air absorption models
+
+		SynthDef(\airAbsorption0,{ |externalIn=0,busOut|
+			var sig= SoundIn.ar(externalIn,1);
+			Out.ar(busOut,sig);
+		}).add;
+
+		SynthDef(\airAbsorption1,{ |externalIn=0,r=1,busOut|
+			var sig, filterfreq;
+
+
 			sig = SoundIn.ar(externalIn,1);
-
-			// apply distance absortion colour effect
 			filterfreq = 15849 + (r * (−785.71 + (r * (18.919 - (0.1668 * r)))));
 			filterfreq = filterfreq.clip(0,20000); // freq above 24kHz destroy your ears!!
-			// filterfreq.poll;
-			// inverse square-law attenuation
-			// filteramp = 1 / (r**2);
-			filteramp = 1 / r;
-
-			filteramp=filteramp.clip(0,1); // don't allow <1 amp values
-
-			// filteramp.poll;
-
-			sig = LPF.ar(sig,filterfreq,filteramp); // 2nd order butterworth lpf
+			sig = LPF.ar(sig,filterfreq); // 2nd order butterworth lpf
 
 			// hardcore clip the signal to avoid shits
 			sig = Clip.ar(sig,0,1);
+			Out.ar(busOut,sig);
 
-			// out into intermediate bus
-			Out.ar(busOut,sig)
 		}).add;
 
+
+		// distance attenuation models
+
+		SynthDef(\distanceAttenuation0,{ |externalIn=0,busOut|
+			var sig= SoundIn.ar(externalIn,1);
+			Out.ar(busOut,sig);
+		}).add;
+
+		SynthDef(\distanceAttenuation1,{ |externalIn=0, r=1, refDistance=1, maxAttenuation=0.000016, maxDistance=62500, busOut|
+			var sig, rof, amp;
+			sig= SoundIn.ar(externalIn,1);
+
+			rof = ( ( ( refDistance * (10.pow(-0.05 * maxAttenuation)) ) - refDistance) / (maxDistance - refDistance));
+			amp =  refDistance / ( ( (r - refDistance) * rof ) + refDistance );
+
+			sig = sig * amp;
+
+			Out.ar(busOut,sig);
+		}).add;
+
+		SynthDef(\distanceAttenuation2,{ |externalIn=0, r=1, refDistance=1, maxAttenuation=0.000016, maxDistance=62500, busOut|
+			var sig, a, amp;
+			sig= SoundIn.ar(externalIn,1);
+
+
+/*			a = maxAttenuation / (20 * log10( refDistance / maxDistance ));
+			amp = ( refDistance / r ).pow(a);*/
+
+			amp =1/r;
+/*			a.poll;
+			amp.poll;*/
+
+			sig = sig * amp;
+
+			Out.ar(busOut,sig);
+		}).add;
+
+
+		//
+		//
+		////////////// POSITION MODELS //////////////
+		//
+		//
 
 		// ambisonics point source encoders
 
@@ -144,15 +180,26 @@
 			Out.ar(0,enc);
 		}).add;
 
-		// vbap encoder
-
-		SynthDef(\vbapEncoder,{ |busIn,azi=0,ele=0|
-			var sig = In.ar(busIn);
-			var enc = VBAP.ar(vbapNumSpeakers,sig,vbapSpeakerBuffer.bufnum,azi,ele);
-			Out.ar(0,enc);
+/*		// vbap encoder
+		{
+			SynthDef(\vbapEncoder,{ |busIn,azi=0,ele=0|
+				var sig = In.ar(busIn);
+				var enc = VBAP.ar(vbapNumSpeakers,sig,vbapSpeakerBuffer.bufnum,azi,ele);
+				Out.ar(0,enc);
 		}).add;
+		}.defer(1); // wait for the vbapSpeakerBuffer...
 
-		// this.initBinauralSynthDef;
+		// this.initBinauralSynthDef;*/
+	}
+
+	initVbapSynthDef{
+		{
+		SynthDef(\vbapEncoder,{ |busIn,azi=0,ele=0|
+				var sig = In.ar(busIn);
+				var enc = VBAP.ar(vbapNumSpeakers,sig,vbapSpeakerBuffer.bufnum,azi,ele);
+				Out.ar(0,enc);
+		}).add;
+		}.defer(1); // wait for the vbapSpeakerBuffer...
 	}
 
 	initBinauralSynthDef {
