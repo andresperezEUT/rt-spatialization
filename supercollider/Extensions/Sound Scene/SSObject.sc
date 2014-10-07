@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, May 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -26,18 +26,22 @@
 // -> shape
 // -> name id
 // -> audio channel associated
-// -> movement: dynamic behavior associated
+// -> motion: dynamic behavior associated
 //
 ////////////////////////////////////////////////////////////////////////////
-
+//
+// TODO: motion composition
+// TODO:
+//
+//////////////////////////////////////////////////////////////////////////////
 
 SSObject : RedObject {
 
 	//adds shape
 	var <shape;
-	var <movement;
+	var <motion;
 	////
-	var <movementList;
+	var <motionList;
 	////
 	var <>regLoc; //initialize to start pos
 	var <>name;
@@ -51,7 +55,7 @@ SSObject : RedObject {
 
 	var <present;
 
-	*new {|world, loc, vel, accel, mass, size, shape, gravity, friction, name, channel|
+	*new {|world, loc, vel, accel, mass, size, shape, gravity, friction, name, channel,registerInWorld=true|
 		//almost same method as in RedObject
 
 		^super.newCopyArgs(
@@ -62,11 +66,11 @@ SSObject : RedObject {
 			mass ? 1,
 			size ? 1
 			//change init function
-		).initSSObject(shape, gravity, friction, name, channel)
+		).initSSObject(shape, gravity, friction, name, channel,registerInWorld)
 	}
 
 
-	initSSObject { |myshape, mygravity, myfriction, myname, mychannel|
+	initSSObject { |myshape, mygravity, myfriction, myname, mychannel,registerInWorld=true|
 
 		// var numNames;
 		regLoc=loc;
@@ -99,13 +103,15 @@ SSObject : RedObject {
 			("Name "++myname++" already exists; default name applied").warn;
 		};
 
-		this.setMovement(\static); //static as default
+		this.setMotion(\static); //static as default
 		////
-		movementList=List.new;
-		// this.addMovement(\static);
+		motionList=List.new;
+		// this.addMotion(\static);
 		////
 
-		this.initRedObject;
+		if (registerInWorld) {
+			this.initRedObject; // calls this.world.add(this);
+		}
 	}
 
 	remove {
@@ -116,14 +122,18 @@ SSObject : RedObject {
 	// getter / setter methods
 
 
-	setChannel { |newChannel|
+	setChannel { |newChannel,internal=true|
 		channel = newChannel;
-		world.sendMsg(\channel,this);
+		if (internal) {
+			world.sendMsg(\channel,this);
+		}
 	}
 
-	present_ { |bool|
+	present_ { |bool,internal=true|
 		present = bool;
-		world.sendMsg(\present,this);
+		if (internal) {
+			world.sendMsg(\present,this);
+		}
 	}
 
 	// private:: auto-casting to Cartesian
@@ -219,15 +229,17 @@ SSObject : RedObject {
 
 	///// only for extended objects
 
-	dAzimuth_ { |newD| // in radians
+	dAzimuth_ { |newD,internal=true| // in radians
 
 		// do not allow values of 0
 		dAzimuth = newD.clip(AmbXEnc.delta,2pi);
 
-		world.sendMsg(\width,this);
+		if (internal) {
+			world.sendMsg(\width,this);
+		}
 	}
 
-	dElevation_ { |newD| // in radians
+	dElevation_ { |newD,internal=true| // in radians
 		var e = this.locSph.elevation;
 
 		// do not allow values of 0
@@ -238,30 +250,36 @@ SSObject : RedObject {
 		e = max(e,(-pi/2)+(dElevation/2));
 		this.locSph_(ele:e);
 
-		world.sendMsg(\width,this);
+		if (internal) {
+			world.sendMsg(\width,this);
+		}
 	}
 
-	shape_ { |newShape|
+	shape_ { |newShape,internal=true|
 		shape = newShape;
 
-		world.sendMsg(\type,this);
+		if (internal) {
+			world.sendMsg(\type,this);
+		}
 	}
 
-	preserveArea_ { |bool|
+	preserveArea_ { |bool,internal=true|
 		if (bool) {
 			preserveArea = 1; //int values for the server
 		} {
 			preserveArea = 0;
 		};
 
-		world.sendMsg(\preserveArea,this);
+		if (internal) {
+			world.sendMsg(\preserveArea,this);
+		}
 	}
 
 
 	/////////////////////////////////////////////////////////////////////////////////
 	//set
-	setMovement { |type=\static ... args|
-		movement = switch (type)
+	setMotion { |type=\static ... args|
+		motion = switch (type)
 		{\static} {Static.new(this)}
 		{\rect} {RectMov.new(this,args)}
 		{\random} {RandomMov.new(this,args)}
@@ -271,13 +289,13 @@ SSObject : RedObject {
 
 	}
 
-	/* addMovement { |type=\static ... args|
-	var movement = switch (type)
+	/* addMotion { |type=\static ... args|
+	var motion = switch (type)
 	{\static} {Static.new(this)}
 	{\rect} {RectMov.new(this,args)}
 	{\orbit} {Orbit.new(this,args)};
 
-	movementList.add(movement);
+	motionList.add(motion);
 	}*/
 
 
@@ -287,8 +305,8 @@ SSObject : RedObject {
 		if (gravity)  { this.addForce(world.gravity) };
 		if (friction) { this.vel_(this.vel*(1-world.friction)) };
 
-		movement.next;
-		// movementList.do(_.next);
+		motion.next;
+		// motionList.do(_.next);
 	}
 
 
