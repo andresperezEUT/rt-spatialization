@@ -1,0 +1,30 @@
+
+
+(
+r=SpatialRender.new(s);
+r.setVbapParameters(VBAPSpeakerArray.new(2, [ 45, -45, -135, 135 ]));
+r.setSpatializationTechnique(\vbap);
+
+"/home/pans/Documentos/SuperCollider/SCLiss/external audio simulation.scd".load;
+
+~world= SSWorld([50,50,50], [0,0,0], 200, 0).showView; //dim,grav,maxvel,damp
+
+~drums=SSObject(~world,[3,3,0],[0,0,0], [0,0,0], 9,\point,name:\drums,channel:0);
+)
+~drums.setMotion(\stati)
+
+r.setMaximumAttenuation(0.01)
+
+~drums.locSph
+~drums.locSph_([2,0,0])
+~drums.locSph_(rho:20)
+~drums.setMotion(\orbit,1)
+~drums.setMotion(\random)
+~drums.setMotion(\shm)
+
+~drums.locSph_(azi:25.degree2rad)
+
+r.verbose_(false)
+
+
+
