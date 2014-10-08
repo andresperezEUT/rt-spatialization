@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, September 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -148,7 +148,7 @@ SpatialRender {
 		},"/spatdif/distance-cues/reference-distance",nil);
 		OSCdef(\maximumDistance,{ |msg| this.setMaximumDistance(msg[1],false);
 		},"/spatdif/distance-cues/maximum-distance",nil);
-		OSCdef(\maximumAttenuation,{ |msg| this.setMaximumAttenuation(msg[1],false);
+		OSCdef(\maximumAttenuation,{ |msg| this.setMaximumAttenuation(msg[1],msg[2],false);
 		},"/spatdif/distance-cues/maximum-attenuation",nil);
 		OSCdef(\attenuationModel,{ |msg| this.setAttenuationModel(msg[1],false);
 		},"/spatdif/distance-cues/attenuation-model",nil);
@@ -425,8 +425,12 @@ SpatialRender {
 
 	}
 
-	setMaximumAttenuation { |newValue,internal=true|
+	setMaximumAttenuation { |newValue, unit=\linear, internal=true|
 		var maximumAttenuation;
+
+		if (unit==\dB) {
+			newValue = newValue.dbamp;
+		};
 
 		if (internal) {
 			if (newValue == \default) {
@@ -435,9 +439,12 @@ SpatialRender {
 				maximumAttenuation = newValue;
 			};
 			// self-message to the oscLogger
-			NetAddr.localAddr.sendMsg("/spatdif/distance-cues/maximum-attenuation",maximumAttenuation);
+			NetAddr.localAddr.sendMsg("/spatdif/distance-cues/maximum-attenuation",maximumAttenuation,\linear);
 		} {
 			maximumAttenuation = newValue;
+			if (unit==\dB) {
+				maximumAttenuation = maximumAttenuation.dbamp;
+			};
 
 			sourceNames.do { |source|
 				attenuationSynths.at(source).set(\maxAttenuation,maximumAttenuation);
@@ -470,7 +477,7 @@ SpatialRender {
 				sourceNames.do { |source|
 					attenuationSynths.at(source).free; // free the synth
 
-					attenuationSynths.put(source,Synth((\attenuationSynth ++ model).asSymbol,[\externalIn,distanceBuses[source],\r,1,\busOut,pannerBuses[source]],target:distanceGroups[source],target:\addToTail));
+					attenuationSynths.put(source,Synth((\distanceAttenuation ++ model).asSymbol,[\externalIn,distanceBuses[source],\r,1,\busOut,pannerBuses[source]],target:distanceGroups[source],addAction:\addToTail));
 
 				};
 
@@ -504,7 +511,7 @@ SpatialRender {
 				sourceNames.do { |source|
 					absorptionSynths.at(source).free; // free the synth
 
-					absorptionSynths.put(source,Synth((\absorptionSynth ++ model).asSymbol,[\externalIn,channels[source],\r,1,\busOut,distanceBuses[source]],target:distanceGroups[source],target:\addToHead));
+					absorptionSynths.put(source,Synth((\airAbsorption ++ model).asSymbol,[\externalIn,channels[source],\r,1,\busOut,distanceBuses[source]],target:distanceGroups[source],addAction:\addToHead));
 				};
 
 				if (verbose) {
