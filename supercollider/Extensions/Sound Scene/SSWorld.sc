@@ -76,6 +76,8 @@ SSWorld : RedWorld1 { //default with walls
 	initSSWorld{ |myFriction,mystepFreq,myNetAddr|
 		friction=myFriction;
 		stepFreq=mystepFreq;
+		
+		renderAddresses = List.new;
 		renderAddresses.add(myNetAddr ? NetAddr.localAddr);
 
 		//defaults
