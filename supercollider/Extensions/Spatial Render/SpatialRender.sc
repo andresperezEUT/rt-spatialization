@@ -708,6 +708,14 @@ SpatialRender {
 	}
 
 
+	sourceType { |name, type|
+		var order = ambisonicsParameters.at(name)[0];
+		this.setAmbisonicsParameters(name,order,type,internal:false);
+		// resend; if it comes from SSWorld, it will be duplicated
+		this.sendToWorld(\sourceTupe,name,type);
+	}
+
+
 	// TODO: maybe check if parameters are not changed?
 
 	setAmbisonicsParameters { |source, order = 3, shape = \point, internal=true|
@@ -984,6 +992,7 @@ SpatialRender {
 			{\sourcePresent} {[cmd,sourceName,args[0]]}
 			{\setSourceWidth} {[cmd,sourceName,args[0],args[1]]}
 			{\preserveArea} {[cmd,sourceName,args[0]]}
+			{\sourceType} {[cmd,sourceName,args[0]]}
 			;
 
 			msg = ['/ssworld',msg].flat;
