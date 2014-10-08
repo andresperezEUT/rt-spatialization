@@ -49,7 +49,7 @@ SSWorld : RedWorld1 { //default with walls
 
 	var <>viewDiff;
 
-	var <>address;
+	var <renderAddresses;
 
 	var <numObjects=0;
 
@@ -76,7 +76,7 @@ SSWorld : RedWorld1 { //default with walls
 	initSSWorld{ |myFriction,mystepFreq,myNetAddr|
 		friction=myFriction;
 		stepFreq=mystepFreq;
-		address= myNetAddr ? NetAddr.localAddr;
+		renderAddresses.add(myNetAddr ? NetAddr.localAddr);
 
 		//defaults
 		rDiff=0.05; ////////// <---- check bibliography!!
@@ -242,23 +242,30 @@ SSWorld : RedWorld1 { //default with walls
 		// instance management
 
 		{\new} {
-			// create instance
-			address.sendMsg("/spatdifcmd/addEntity",name);
-			// set media source
-			address.sendMsg("/spatdif/source/"++name++"/media/type",\jack); // redundant because it's the only type supported by SpatialRender
-			address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			renderAddresses.do { |address|
+				// create instance
+				address.sendMsg("/spatdifcmd/addEntity",name);
+				// set media source
+				address.sendMsg("/spatdif/source/"++name++"/media/type",\jack); // redundant because it's the only type supported by SpatialRender
+				address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			}
 		}
 
 		{\end} {
-			address.sendMsg("/spatdifcmd/removeEntity",name);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdifcmd/removeEntity",name);
+			}
 		}
 
 
 		// source characteristics
 
 		{\channel} {
-			address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			}
 		}
+
 		{\position} {
 			var azi = obj.locSph.azimuth.rad2degree;
 			var ele = obj.locSph.elevation.rad2degree;
@@ -266,13 +273,21 @@ SSWorld : RedWorld1 { //default with walls
 			var rho = max(obj.locSph.rho,sweetSpotSize);
 
 			// [azimuth, elevation, distance] in degrees
-			address.sendMsg("/spatdif/source/"++name++"/position",azi,ele,rho,\aed);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/position",azi,ele,rho,\aed);
+			}
 		}
+
 		{\type} {
-			address.sendMsg("/spatdif/source/"++name++"/type",obj.shape);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/type",obj.shape);
+			}
 		}
+
 		{\present} {
-			address.sendMsg("/spatdif/source/"++name++"/present",obj.present);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/present",obj.present);
+			}
 		}
 
 
@@ -281,11 +296,15 @@ SSWorld : RedWorld1 { //default with walls
 		{\width} {
 			var da = obj.dAzimuth.rad2degree;
 			var de = obj.dElevation.rad2degree;
-			address.sendMsg("/spatdif/source/"++name++"/width",da,de);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/width",da,de);
+			}
 		}
 
 		{\preserveArea} {
-			address.sendMsg("/spatdif/source/"++name++"/preserveArea",obj.preserveArea);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/preserveArea",obj.preserveArea);
+			}
 		}
 
 	}
@@ -442,6 +461,15 @@ SSWorld : RedWorld1 { //default with walls
 		^objectsID.values.asArray;
 	}
 
+	//// RENDER ADDRESS ///////
+
+	addRenderAddress { |addr|
+		^renderAddresses.add(addr);
+	}
+
+	removeRenderAddress { |addr|
+		^renderAddresses.remove(addr);
+	}
 
 
 
