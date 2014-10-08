@@ -68,8 +68,9 @@
 			var sig, rof, amp;
 			sig= SoundIn.ar(externalIn,1);
 
-			rof = ( ( ( refDistance * (10.pow(-0.05 * maxAttenuation)) ) - refDistance) / (maxDistance - refDistance));
+			rof = ( ( ( refDistance * (10.pow(-0.05 * maxAttenuation.ampdb)) ) - refDistance) / (maxDistance - refDistance));
 			amp =  refDistance / ( ( (r - refDistance) * rof ) + refDistance );
+			amp = Clip.kr(amp, maxAttenuation, 1);
 
 			sig = sig * amp;
 
@@ -80,13 +81,9 @@
 			var sig, a, amp;
 			sig= SoundIn.ar(externalIn,1);
 
-
-/*			a = maxAttenuation / (20 * log10( refDistance / maxDistance ));
-			amp = ( refDistance / r ).pow(a);*/
-
-			amp =1/r;
-/*			a.poll;
-			amp.poll;*/
+			a = maxAttenuation.ampdb / (20 * log10( refDistance / maxDistance ));
+			amp = ( refDistance / r )**a;
+			amp = Clip.kr(amp,maxAttenuation,1);
 
 			sig = sig * amp;
 
