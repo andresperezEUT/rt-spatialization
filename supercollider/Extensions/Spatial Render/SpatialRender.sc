@@ -94,6 +94,7 @@ SpatialRender {
 
 	var spatDifPlayer;
 
+	var <>resendToWorld = false; // resend all world messages, for remote visualization
 	var worldAddresses;
 
 
@@ -973,8 +974,8 @@ SpatialRender {
 	sendToWorld { |cmd, sourceName ...args|
 		var msg;
 
-		// only resend if messages come from SpatDifPlayer (not from the world)
-		if (this.spatDifPlayer_isPlaying) {
+		// in localhost, only resend if messages come from SpatDifPlayer (not from the world)
+		if (this.spatDifPlayer_isPlaying or:{resendToWorld}) {
 
 			msg = switch (cmd)
 			{\mediaType} {[cmd,sourceName,args[0]]}
@@ -991,6 +992,14 @@ SpatialRender {
 				addr.sendBundle(0,msg)
 			}
 		}
+	}
+
+	addWorldAddress { |addr|
+		^worldAddresses.add(addr);
+	}
+
+	removeWorldAddress { |addr|
+		^worldAddresses.remove(addr);
 	}
 
 }
