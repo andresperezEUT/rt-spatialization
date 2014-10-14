@@ -39,6 +39,7 @@ Dependencies:
 
 Tested for GNU/Linux. It *should* work for OSX and windows.
 
+================
 (C) Andrés Pérez López, 2014
 
 All the code is licensed under GPL v3.0
