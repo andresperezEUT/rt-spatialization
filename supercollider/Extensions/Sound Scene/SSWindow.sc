@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, April 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -37,19 +37,22 @@
 //
 // TODO:
 // -> support arbitrary coordinate systems ordering
-// -> adjust pixels to meters (through draw.scale?)
 //
 ////////////////////////////////////////////////////////////////////////////
 
 
 SSWindow : RedQWindow {
 
-	var <>dim; //dimensions of the world which is represented, as a SSVector
+	var <>dim; //dimensions of the world which is represented
 	var widthSlider=20;
 	var zoomSlider;
 	var <>zoom = 55;
-	var <>minZoom=10;
+	var <>minZoom=1;
 	var <>maxZoom=100;
+
+	var xTranslateSlider,yTranslateSlider;
+	var <>xTranslate=0;
+	var <>yTranslate=0;
 
 	*new {|name= "redQWindow", bounds, resizable= false, border= true, server, scroll= false, dimVector|
 		^super.new.initSSWindow(name, bounds, resizable, border, scroll,dimVector);
@@ -73,8 +76,18 @@ SSWindow : RedQWindow {
 		QWindow.initAction.value(this);
 		//...until here
 
-		zoomSlider=Slider(this, Rect(0, 0, widthSlider, argBounds.height)).value_(0.5);
+		zoomSlider=Slider(this, Rect(0, 0, widthSlider, argBounds.height-widthSlider)).value_(0.5);
 		zoomSlider.action = {zoom=zoomSlider.value.linlin(0,1,minZoom,maxZoom); this.refresh;};
+
+		xTranslateSlider = Slider(this,Rect(widthSlider, argBounds.height-widthSlider, argBounds.width-(2*widthSlider), widthSlider)).value_(0.5);
+		xTranslateSlider.action = {
+			xTranslate = xTranslateSlider.value.linlin(0,1,-100,100).neg
+		};
+
+		yTranslateSlider = Slider(this,Rect(argBounds.width-widthSlider, 0, widthSlider, argBounds.height-widthSlider)).value_(0.5);
+		yTranslateSlider.action = {
+			yTranslate = yTranslateSlider.value.linlin(0,1,-100,100)
+		};
 
 
 		dim = dimVector ? Cartesian(100,100,100);
@@ -85,9 +98,13 @@ SSWindow : RedQWindow {
 	draw {|func| userView.drawFunc= {
 		Pen.translate(this.bounds.width/2,this.bounds.height/2);
 		Pen.scale(zoom,zoom);
+		Pen.translate(xTranslate,yTranslate);
+
 		func.value();
+
 		Pen.translate(0,0);
 		Pen.scale(1/zoom,1/zoom);
+		Pen.translate(xTranslate.neg,yTranslate.neg);
 		}
 	}
 }
