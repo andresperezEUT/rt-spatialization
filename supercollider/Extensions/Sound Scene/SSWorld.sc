@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, May 2014 [contact@andresperezlopez.com]
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 //
-// SSWindow.sc
+// SSWorld.sc
 // Based on RedUniverse quark (by redFrik)
 //
 // This class implements a Sound Scene World, which is a special case of RedWorld type 1 (without walls)
@@ -29,9 +29,6 @@
 // -> OSC messages with adjustable JND variations for sending to the spatial render
 //
 //
-//
-// TODO:
-// -> OBJECT GROUPING AND HIERARCHIES
 ////////////////////////////////////////////////////////////////////////////
 
 SSWorld : RedWorld1 { //default with walls
@@ -40,44 +37,50 @@ SSWorld : RedWorld1 { //default with walls
 
 	var time, <>stepFreq;
 
-	var <window;
+	var window;
 
 	var <>rDiff, <>aziDiff, <>eleDiff;
 
 	var <>viewDiff;
 
-	var <>address;
+	var <renderAddresses;
 
 	var <numObjects=0;
 
-	var <objectsID;
+	var objectsID;
 
-	var <worldView;
+	var worldView;
 
-	var <>sweetSpotSize=2;
+	var <sweetSpotSize=2;
 
 	var <maxDistance; //maximum distance on the room from the center
 
-	*new {|dim, gravity, maxVel, damping, friction=0.01, timeStep=60|
+	var <>receivingFromServer = false;
+
+	*new {|dim, gravity, maxVel, damping, friction=0.01, timeStep=60, netAddr|
 
 		^super.newCopyArgs(
 			dim !? {if (dim.isArray) {Cartesian.fromArray(dim)} {dim} } ?? {Cartesian(10,10,5)},
-			gravity !? {if (gravity.isArray) {Cartesian.fromArray(gravity)} {gravity} } ?? {Cartesian(0,0.98,0)},
-			maxVel ? 10,
+			gravity !? {if (gravity.isArray) {Cartesian.fromArray(gravity)} {gravity} } ?? {Cartesian(0,0,0.98)},
+			maxVel ? 100,
 			damping ? 0.25
-		).initSSWorld(friction,timeStep);
+		).initSSWorld(friction,timeStep,netAddr);
 	}
 
-	initSSWorld{ |myFriction,mystepFreq|
+	initSSWorld{ |myFriction,mystepFreq,myNetAddr|
 		friction=myFriction;
 		stepFreq=mystepFreq;
+
+		renderAddresses = List.new;
+		renderAddresses.add(myNetAddr ? NetAddr.localAddr);
+
 		//defaults
 		rDiff=0.05; ////////// <---- check bibliography!!
 		aziDiff=1.degree2rad;
 		eleDiff=5.degree2rad; ////////// <---- check bibliography!!
 		viewDiff=false;
 
-		address=NetAddr.localAddr;
+
 
 		maxDistance=this.getMaxDistance;
 
@@ -94,7 +97,10 @@ SSWorld : RedWorld1 { //default with walls
 		// task managing objects update and time passing
 		time=Task({
 			inf.do{
-				this.update;
+				// avoid sending position information in playback
+				if (receivingFromServer.not) {
+					this.update;
+				};
 				stepFreq.reciprocal.wait;
 			}
 		}).start;
@@ -110,11 +116,57 @@ SSWorld : RedWorld1 { //default with walls
 		RedUniverse.add(this);	//add world to universe
 		this.prInitSurroundings;
 
+
+		//////////////////// RECEIVERS FROM SPATIALRENDER ///////////
+		OSCdef(\fromSpatialRender,{ |msg|
+			var cmd = msg[1];
+			var sourceName = msg[2];
+			var args = msg[3..];
+
+			if (this.getObject(sourceName).isNil) { //create object
+				this.add(SSObject.new(this,name:sourceName,registerInWorld:false),internal:false);
+			};
+
+
+			switch (cmd)
+			{\mediaType}  {}
+			{\mediaChannel} {
+				this.getObject(sourceName).setChannel(msg[3],internal:false)
+			}
+			{\setPosition} {
+				var azi = args[0].degree2rad;
+				var ele = args[1].degree2rad;
+				var r = args[2];
+				this.getObject(sourceName).locSph_(Spherical(r,azi,ele));
+			}
+			{\sourcePresent} {
+				this.getObject(sourceName).present_(msg[3].asFloat.asBoolean,internal:false)
+			}
+			{\setSourceWidth} {
+				this.getObject(sourceName).dAzimuth_(args[0],internal:false);
+				this.getObject(sourceName).dElevation_(args[1],internal:false);
+			}
+			{\preserveArea} {
+				this.getObject(sourceName).preserveArea_(msg[3],internal:false)
+			};
+
+			receivingFromServer = true;
+			this.updateView;
+
+
+		},"/ssworld",nil);
+
 	}
 
 	getMaxDistance {
 		var extreme=dim*[0.5,0.5,1];
 		^extreme.rho;
+	}
+
+	setSweetSpotSize { |newSize|
+		sweetSpotSize = newSize;
+		//refresh view
+		this.updateView;
 	}
 
 	dim_{ |value|
@@ -126,39 +178,59 @@ SSWorld : RedWorld1 { //default with walls
 	}
 
 
-	add { |obj|
+	add { |obj,internal=true|
 
 		// super.add(obj); // save object in objects array and set object's world to this
 		objects.add(numObjects -> obj);
 		// obj.world= this; //maybe this is redundant???
 		//////
 		obj.channel = obj.channel ? numObjects;
-		obj.name = obj.name ?? {(numObjects).asSymbol};
-		// obj.name=(\track++numObjects).asSymbol;
+		if (this.getAllObjectNames.indexOf((numObjects).asSymbol).isNil.not) {
+			obj.name = (numObjects.asSymbol++"*".asSymbol).asSymbol;
+		} {
+
+			obj.name = obj.name ?? {(numObjects).asSymbol};
+		};
 
 		//internal dictionaries;
 		objectsID.add(numObjects -> obj.name);
 		numObjects=numObjects+1;
 
 		// send message to render
-		this.sendMsg(\new,obj);
-		this.sendMsg(\position,obj);
+		if (internal) {
+			this.sendMsg(\new,obj);
+			this.sendMsg(\position,obj);
+
+		};
 
 		//refresh view
 		this.updateView;
 
 	}
 
-	remove { |obj|
-		objects.findKeyForValue(obj) !? { |key|
+	remove { |obj,internal=true|
+		var key = objects.findKeyForValue(obj);
+		if (key.isNil.not) {
 			// remove object from objects list
 			objects.removeAt(key);
 			// remove object name from objectsID list
 			objectsID.removeAt(key);
 			//refresh view
 			this.updateView;
-			// send message to render
-			this.sendMsg(\end,obj);
+
+			if (internal) {
+				// send message to render
+				this.sendMsg(\end,obj);
+			}
+		}
+	}
+
+	removeByName { |name|
+		var key = objectsID.findKeyForValue(name);
+		if (key.isNil.not) {
+			this.remove(objects.at(key));
+		} {
+			("Object " ++ name ++ " not found").warn;
 		}
 	}
 
@@ -169,25 +241,32 @@ SSWorld : RedWorld1 { //default with walls
 		switch(type)
 
 		// instance management
-
 		{\new} {
-			// create instance
-			address.sendMsg("/spatdifcmd/addEntity",name);
-			// set media source
-			address.sendMsg("/spatdif/source/"++name++"/media/type",\jack); // redundant because it's the only type supported by SpatialRender
-			address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			renderAddresses.do { |address|
+				// create instance
+				address.postln;
+				address.sendMsg("/spatdifcmd/addEntity",name);
+				// set media source
+				address.sendMsg("/spatdif/source/"++name++"/media/type",\jack); // redundant because it's the only type supported by SpatialRender
+				address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			}
 		}
 
 		{\end} {
-			address.sendMsg("/spatdifcmd/removeEntity",name);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdifcmd/removeEntity",name);
+			}
 		}
 
 
 		// source characteristics
 
 		{\channel} {
-			address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/media/channel",obj.channel);
+			}
 		}
+
 		{\position} {
 			var azi = obj.locSph.azimuth.rad2degree;
 			var ele = obj.locSph.elevation.rad2degree;
@@ -195,13 +274,21 @@ SSWorld : RedWorld1 { //default with walls
 			var rho = max(obj.locSph.rho,sweetSpotSize);
 
 			// [azimuth, elevation, distance] in degrees
-			address.sendMsg("/spatdif/source/"++name++"/position",azi,ele,rho,\aed);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/position",azi,ele,rho,\aed);
+			}
 		}
+
 		{\type} {
-			address.sendMsg("/spatdif/source/"++name++"/type",obj.shape);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/type",obj.shape);
+			}
 		}
+
 		{\present} {
-			address.sendMsg("/spatdif/source/"++name++"/present",obj.present);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/present",obj.present);
+			}
 		}
 
 
@@ -210,11 +297,15 @@ SSWorld : RedWorld1 { //default with walls
 		{\width} {
 			var da = obj.dAzimuth.rad2degree;
 			var de = obj.dElevation.rad2degree;
-			address.sendMsg("/spatdif/source/"++name++"/width",da,de);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/width",da,de);
+			}
 		}
 
 		{\preserveArea} {
-			address.sendMsg("/spatdif/source/"++name++"/preserveArea",obj.preserveArea);
+			renderAddresses.do { |address|
+				address.sendMsg("/spatdif/source/"++name++"/preserveArea",obj.preserveArea);
+			}
 		}
 
 	}
@@ -232,7 +323,7 @@ SSWorld : RedWorld1 { //default with walls
 	};
 	}*/
 
-	contain {|ssObj|
+	contain {|ssObj| // hold object inside world
 		var arrayDim=dim.asArray;
 		var loc, vel;
 
@@ -243,20 +334,24 @@ SSWorld : RedWorld1 { //default with walls
 		loc.do{|l, i|
 			if (i != 2) { //z must be treated different
 				if( l.abs > (arrayDim[i]/2) ) { //if location exceeds world dimension
+
 					//invert vel
 					vel.put(i,vel[i]*(1-damping).neg);
 					ssObj.vel_(vel);
 					//fold loc
+
 					loc.put(i,l.fold(arrayDim[i]/2.neg,arrayDim[i]/2));
 					ssObj.loc_(loc);
+
 				}
 			} { //z coordinate only defined in range (0..depth)
-				if( l > (arrayDim[i]/*/2*/) or:{l<0} ) { //if location exceeds world dimension
+				if( l > (arrayDim[i]) or:{l<0} ) { //if location exceeds world dimension
+
 					//invert vel
 					vel.put(i,vel[i]*(1-damping).neg);
 					ssObj.vel_(vel);
 					//fold loc
-					loc.put(i,l.fold(0,arrayDim[i]/*/2*/));
+					loc.put(i,l.fold(0,arrayDim[i]));
 					ssObj.loc_(loc);
 				}
 			}
@@ -371,6 +466,21 @@ SSWorld : RedWorld1 { //default with walls
 		^objectsID.values.asArray;
 	}
 
+	//// RENDER ADDRESS ///////
+
+	addRenderAddress { |addr|
+		^renderAddresses.add(addr);
+	}
+
+	removeRenderAddress { |addr|
+		^renderAddresses.remove(addr);
+	}
+
+	//// CLOSE WINDOW //////
+
+	closeWindow {
+		window.close;
+	}
 
 
 
