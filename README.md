@@ -7,8 +7,9 @@ Developed in collaboration with Barcelona Media (http://www.barcelonamedia.org/)
 
 Master thesis available here: http://www.andresperezlopez.com/sites/default/files/Andres_Perez_Master_Thesis.pdf
 
+=================
+FEATURES
 
-Features:
 Spatial Render:
 - Spatialization techniques: ambisonics, vbap and binaural
 - Up to full 3rd order Ambisonics, with different source shapes: punctual, ring, semi-meridian and extended
@@ -29,7 +30,7 @@ Interaction:
 - OSC compatible
 - Log and playback user interface gestures
 
-
+=================
 Dependencies:
 - AmbDec (ambisonics) : http://kokkinizita.linuxaudio.org/linuxaudio/
 - SC3 plugins (vbap) : https://github.com/supercollider/sc3-plugins
@@ -39,7 +40,7 @@ Dependencies:
 Tested for GNU/Linux. It *should* work for OSX and windows.
 
 (C) Andrés Pérez López, 2014
+
 All the code is licensed under GPL v3.0
 
-contact [at] andresperezlopez.com
-www.andresperezlopez.com
+contact [at] andresperezlopez.com // www.andresperezlopez.com
