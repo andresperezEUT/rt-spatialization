@@ -1,32 +1,46 @@
-// TODO: generalize oscReceiver function creation
-// ---> maybe tratar especialmente orientation como una función aparte? class method?
-// TODO: remove all fucking vars
+////////////////////////////////////////////////////////////////////////////
+//
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; withot even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>
+//
+////////////////////////////////////////////////////////////////////////////
+//
+// OrientationController.sc
+//
+// A convenience class for managing interaction between a SSWorld and a device with orientation sensing capabilities (for example a smartphone)
+//
+// Provides easy access to events, and looping capabilities
+////////////////////////////////////////////////////////////////////////////
+
 
 OrientationController {
 
-	var orientationListener, <orientationAction;
-	var <orientationLog, <orientationLogger, orientationLogTime;
 	var <azimuth, <elevation, <roll;
-	var <dAzi;
+	var dAzi;
 
-	var accelerationListener, <accelerationAction;
-	var <accelerationLog, <accelerationLogger, accelerationLogTime;
 	var <acceleration;
-
-	var gravityListener, <gravityAction;
-	var <gravityLog, <gravityLogger, gravityLogTime;
 	var <gravity;
 
 	var <logging = false;
-	var <logTime;
+	var logTime;
 	var <isPlaying = false;
 
-	var orientationTask, accelerationTask, gravityTask;
-
-	var <replayTask;
+	var replayTask;
 	var oscListener;
 	var action;
-	var <logger;
+	var logger;
 
 
 	*new {
@@ -35,12 +49,8 @@ OrientationController {
 
 	initOC {
 
-
 		acceleration = Array.newClear(3); //[x,y,z] components of linear acceleration
 		gravity = Array.newClear(3); //[x,y,z] components of linear acceleration
-
-		orientationLog = false;
-		orientationLogger = List.new;
 
 		replayTask = Dictionary.new;
 		oscListener = Dictionary.new;
@@ -74,7 +84,6 @@ OrientationController {
 				//logger
 				if (logging) {
 					logger[\orientation].add([time-logTime,[azimuth,elevation,roll]]);
-					//orientationLogger.add([azimuth,elevation,roll,time-orientationLogTime]);
 				};
 			};
 			},"/orientationController/orientation")
