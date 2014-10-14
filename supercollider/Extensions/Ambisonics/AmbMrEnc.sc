@@ -1,3 +1,30 @@
+////////////////////////////////////////////////////////////////////////////
+//
+// Copyright ANDRÉS PÉREZ LÓPEZ, January 2014 [contact@andresperezlopez.com]
+// original Copyright (C) IEM 2005, Christopher Frauenberger [frauenberger@iem.at]
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; withot even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>
+//
+////////////////////////////////////////////////////////////////////////////
+//
+// AmbMrEnc Class
+//
+// implements Ambisonic encoders up to 3rd order
+// restricted meridian source shape
+//
+////////////////////////////////////////////////////////////////////////////
+
 AmbMrEnc {
 	*ar { |in, azimuth=0, norm='N3D'|
 		^ in * this.kr(azimuth,norm);
