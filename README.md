@@ -1,7 +1,7 @@
 3Dj
 =================
 
-3Dj is a SuperCollider library for real-time interactive sound spatialization.
+3Dj is a SuperCollider library for real-time interactive 3D sound spatialization.
 
 Developed in collaboration with Barcelona Media (http://www.barcelonamedia.org/) as the implementation part of the Master Thesis "Real-Time 3D Audio Spatialization Tools for Interactive Performance", Music Technology Group, Pompeu Fabra University, Barcelona.
 
@@ -11,6 +11,7 @@ Master thesis available here: http://www.andresperezlopez.com/sites/default/file
 FEATURES
 
 Spatial Render:
+- 3D source position
 - Spatialization techniques: ambisonics, vbap and binaural
 - Up to full 3rd order Ambisonics, with different source shapes: punctual, ring, semi-meridian and extended
 - SpatDIF compatible
