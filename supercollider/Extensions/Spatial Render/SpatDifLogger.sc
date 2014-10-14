@@ -1,85 +1,51 @@
-
-/*
-OSC message recorder and player
-(c) 2013 - Marije Baalman
-GPL3 license
-
-// this class needs the FileLog quark to function
-
-
-// ------ recording
-
-// to record, create a OSCFileLog
-~timelog = OSCFileLog.new( "test" ); // "test" is the base for the filename, a datetime stamp will be automatically added to the name
-
-// send some osc data to test:
-n = NetAddr.new( "localhost", NetAddr.langPort );
-(
-Task({ 10.do{
-n.sendMsg( "/hello", 0, 20.rand, 19.rand, "hello", 3, 4, 2.003);
-1.0.rand.max(0.01).wait;
-}}).play;
-);
-
-// close the file again:
-~timelog.close;
-
-
-//------- playback:
-
-// set up our target net address (here we just send to SC again
-n = NetAddr.new( "localhost", NetAddr.langPort );
-
-// we trace it to see if we get it, just to show that it works:
-OSCFunc.trace( true );
-
-// create a player
-~oscplayer = OSCFileLogPlayer.new( "/home/nescivi/SuperCollider/test_130812_121049", n ); // arguments are the file/folder we previously recorded, and the target netaddress
-
-// and play it
-~oscplayer.play;
-
-~oscplayer.pause;
-
-~oscplayer.resume;
-
-~oscplayer.stop;
-
-~oscplayer.reset;
-
-// play back faster:
-~myClock = TempoClock.new( 10 );
-~oscplayer.play( ~myClock );
-
-
-// close the file again:
-~oscplayer.close;
-
-
-
-*/
-// TODO: allow proper osc bundles
+////////////////////////////////////////////////////////////////////////////
+//
+// Copyright ANDRÉS PÉREZ LÓPEZ, October 2014 [contact@andresperezlopez.com]
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; withot even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>
+//
+////////////////////////////////////////////////////////////////////////////
+//
+// SpatDifLogger.sc
+//
+// Log all incoming OSC-SpatDIF messages to a textFile
+//
+//////////////////////////////////////////////////////////////////////////////
+//
+// SpatDifPlayer.sc
+//
+// Utility for playing back a given OSC-SpatDIF log file
+//
+////////////////////////////////////////////////////////////////////////////
 
 SpatDifLogger{
 
-	var <recTime;
 	var <timelogfile;
 	var <offset;
 	var <oscRecFunc;
 	var <>log = true;
-	var filename;
+	var <filename;
 	var isEmpty = true;
 	var lastTime, <>deltaTime = 0.01;// default to 10 ms
 
-	*new{ |fn|
-		^super.new.init( fn );
+
+
+	*new{ |fn,path,extensions,author,host,date,session,location,annotation|
+		^super.new.init( fn,path,extensions,author,host,date,session,location,annotation);
 	}
 
-	init{ |fn|
-		// create looger file
-		fn = fn ? "TimeFileLog";
-		filename = fn ++ "_"++Date.localtime.stamp++".txt";
-		timelogfile = File(filename,"w");
+	init{ |fn,path,extensions,author,host,date,session,location,annotation|
 
 		// create receiver function
 		oscRecFunc = { |msg, time|
@@ -95,12 +61,61 @@ SpatDifLogger{
 		// instanciate osc receiver
 		this.resetTime;
 		thisProcess.addOSCRecvFunc( oscRecFunc );
+
+
+		// create logger file
+		if (fn.isNil) {fn = "TimeFileLog" ++ "_" ++ Date.localtime.stamp ++ ".txt";};
+		filename = path +/+ fn;
+		timelogfile = File(filename,"w");
+
+		// WRITE SPATIDIF META SECTION
+
+		this.writeMetaVersion;
+		timelogfile.write("\n");
+		timelogfile.write("\n");
+
+		this.writeMetaExtensions(extensions);
+		timelogfile.write("\n");
+
+		this.writeMetaInfo(author,host,date,session,location,annotation);
+		timelogfile.write("\n");
+
+		this.writeMetaEnd;
+		timelogfile.write("\n");
+		timelogfile.write("\n");
 	}
 
 	resetTime{
 		offset = Process.elapsedTime;
 		lastTime = offset;
 	}
+
+	writeMetaVersion { |version = 0.3|
+		timelogfile.write( "/spatdif/version " ++ version.asString );
+	}
+
+	writeMetaExtensions { |extensions|
+		if (extensions.notEmpty) {
+			timelogfile.write( "/spatdif/meta/extensions ");
+			extensions.do{ |ext|
+				timelogfile.write( ext.asString ++ " ");
+			}
+		}
+	}
+
+	writeMetaInfo { |...info|
+		var elements = #["author","host","date","session","location","annotation"];
+		info.do{ |field,i|
+			if (field.isNil.not) {
+				timelogfile.write( "/spatdif/meta/info" +/+ elements[i] ++ " " ++ field ++ "\n");
+			}
+		}
+	}
+
+	writeMetaEnd {
+		timelogfile.write( "################################" );
+	}
+
 
 	writeLine{ |msg,time|
 		isEmpty = false;
@@ -123,7 +138,7 @@ SpatDifLogger{
 
 	}
 
-	close{
+	close {
 		timelogfile.close;
 		thisProcess.removeOSCRecvFunc( oscRecFunc );
 		// delete the file if nothing was written
@@ -133,186 +148,145 @@ SpatDifLogger{
 
 // reads a data network log and plays it
 
-OSCFileLogPlayer{
-	var <reader;
-	var playTask;
+SpatDifPlayer {
 
-	// var <timeMap;
-	var <curTime=0;
-	// var <deltaT=0;
+	var netAddr; // direction where to send data
+	var file;
+	var fileStrings, metaSection;
+	var timeStamps, spatDifCommands;
+	var deltas; // difference times between timestamps
+	var task;
+	var taskController;
+	var taskPlaying = false;
+	var taskLoop = false;
+	var <>verbose = true;
 
-	var <fileClass;
-	var <hasStamp = false;
-	var <hasExtraTab = false;
-
-	var <targetaddr;
-
-	*new{ |fn,addr|
-		^super.new.init( fn, addr );
+	*new { |netAddr|
+		^super.new.init(netAddr);
 	}
 
-	init{ |fn,addr|
-		targetaddr = addr;
-		this.checkFileClass( fn );
-		this.open( fn );
+	init { |myNetAddr|
+		netAddr = myNetAddr ? NetAddr.localAddr;
+		metaSection = List.new;
+		timeStamps = List.new;
+		spatDifCommands = List.new;
 	}
 
-	checkFileClass{ |fn|
-		var tar,txt;
-		var path = PathName(fn);
-		tar = (path.extension == "tar");
-		txt = (path.extension == "txt");
-		if ( tar ){
-			fileClass = MultiFilePlayer;
-		}{
-			if ( txt ){
-				fileClass = TabFilePlayer;
-			}{
-				fileClass = MultiFilePlayer;
-			}
-		};
-		// [tar, txt, fileClass].postln;
-	}
+	loadFile { |pathToFile|
+		var provList;
 
-	open{ |fn|
-		if ( playTask.notNil ){ playTask.stop; };
-		if ( reader.notNil ){ reader.close; };
+		file = File.new(pathToFile,"r");
 
-		reader = fileClass.new( fn );
+		// fill the array with file lines, discarding the empty ones and the comments
+		fileStrings = file.readAllString.split($\n).reject(_=="").reject({|e|e[0]==$#});
 
-		// this.readHeader;
+		// close the file
+		file.close;
 
-		playTask = Task{
-			var dt = 0;
-			while( { dt.notNil }, {
-				dt = this.readLine;
-				if ( dt.notNil ){
-					dt.wait;
+
+		// classify strings
+		fileStrings.do{ |string|
+
+			var line = string.split($/);
+			var word = line[2].split($ );
+
+			// word[0] is the first word in the second slash
+			if (word[0] == "meta" or:{word[0] == "version"}) {
+				metaSection.add(string);
+			} {
+				if (word[0] == "time") {
+					timeStamps.add(word[1].asFloat);
+
+					if (provList.isNil.not) { // avoid first empty array
+						spatDifCommands.add(provList.asArray);
+					};
+					provList = List.new;
+				} {
+					var commentIndex;
+					// adequate string
+					string = string.split($ ).reject(_=="");
+					// take out comments
+					commentIndex = string.indicesOfEqual("#");
+
+					if (commentIndex.isNil) {
+						provList.add(string);
+					} {
+						provList.add(string[0..commentIndex[0]-1])
+					}
 				}
-			});
+			};
 		};
-	}
+		spatDifCommands.add(provList.asArray); // add last list
 
-	readLine{ |update=true|
-		var dt,line,data;
-		var oldid;
-		var oldTime = curTime;
-		oldid = reader.curid;
-		line = reader.nextInterpret;
-		// line.postcs;
-		// header may have changed:
-		// if ( oldid != reader.curid ){
-		// this.readHeader;
-		// };
-		if ( line.isNil ){
-			"At end of data".postln;
-			^nil;
+		// convert timestamps into deltas
+		deltas=Array.new(timeStamps.size);
+		deltas.add(timeStamps[0]);
+		timeStamps[..timeStamps.size-2].do{|time,i|
+			deltas.add(timeStamps[i+1]-time)
 		};
-		curTime = line.first;
-		if ( update ){
-			targetaddr.sendMsg( *line.copyToEnd( 1 ) );
-		};
-		dt = curTime - oldTime;
-		^dt;
+
+	}
+
+	createTask { |loop=1,play=true|
+
+		"createTask".postln;
+		loop.postln;
+		play.postln;
+
+		task = Task({
+			this.loadMetaSection;
+			loop.do {
+				deltas.do{ |delta,i|
+					delta.wait;
+					spatDifCommands[i].do{|cmd|
+						netAddr.sendBundle(0,cmd);
+						if (verbose) {cmd.postln};
+					}
+				};
+				// give some extra time before finishing:
+				// if not, SpatialRender.sendToWorld will check spatDifPlayer_isPlaying=false
+				// and will not send the last message
+			};
+			0.1.wait;
+		});
+
+		// task controller
+		taskController = SimpleController(task);
+		taskController.put(\userPlayed, {taskPlaying = true});
+		taskController.put(\userStopped, {taskPlaying = false});
+		taskController.put(\stopped, {taskPlaying = false});
+
+		if (play) {
+			task.play;
+		}
 	}
 
 
-	play{ |clock|
-		playTask.start( clock );
+	loadMetaSection {
+		metaSection.do{ |string|
+			netAddr.sendMsg(string)
+		}
 	}
 
-	pause{
-		playTask.pause;
+	start{ |loop=1|
+		this.createTask(loop,play:true);
 	}
 
-	resume{
-		playTask.resume;
+	play{
+		task.play;
 	}
 
-	stop{
-		playTask.stop;
-		this.reset;
+	pause {
+		task.pause;
 	}
 
-	reset{
-		curTime = 0;
-		reader.reset;
-		// this.readHeader;
-		playTask.reset;
+	reset {
+		task.reset;
 	}
 
-	close{
-		playTask.stop;
-		reader.close;
+	isPlaying {
+		^taskPlaying;
 	}
 
-	/*
-	goToTime{ |newtime|
-	var line,oldid;
-	if ( deltaT == 0 ){
-	deltaT = this.readLine;
-	};
-	line = floor( newtime / deltaT );
-	curTime = line * deltaT;
-	// assuming dt is constant.
 
-	if ( fileClass == MultiFilePlayer ){
-	oldid = reader.curid;
-	reader.goToLine( line.asInteger );
-	// header may have changed:
-	if ( oldid != reader.curid ){
-	this.readHeader;
-	};
-	}{
-	reader.goToLine( line.asInteger );
-	};
-	}
-	*/
-
-	/*
-	readHeader{
-	var spec,playset,playids;
-	var playslots;
-	var header;
-
-	playnodes = Dictionary.new;
-
-	header = reader.readHeader(hs:2);
-	spec = header[0].last;
-	if ( spec.notNil, {
-	network.setSpec( spec );
-	// if spec was not local, it may be included in the tar-ball
-	if ( network.spec.isNil ){
-	reader.extractFromTar( spec ++ ".spec" );
-	network.spec.fromFileName( reader.pathDir +/+ spec );
-	};
-	});
-
-	playslots = header[1].drop(1).collect{ |it| it.interpret };
-
-	if ( fileClass == TabFilePlayer ){
-	// backwards compatibility (there was an extra tab written at the end)
-	playslots = playslots.drop(-1);
-	hasExtraTab = true;
-	};
-
-	if ( playslots.first == "time" ){
-	// date stamps in the first column:
-	playslots.drop(1);
-	hasStamp = true;
-	};
-
-	playset = Set.new;
-	playids = playslots.collect{ |it| it.first }.do{
-	|it,i| playset.add( it );
-	};
-	playset.do{ |it|
-	network.addExpected( it );
-	playnodes.put( it, Array.new )
-	};
-	playids.do{ |it,i|
-	playnodes.put( it, playnodes[it].add( i ) )
-	};
-	}
-	*/
 }
