@@ -7,6 +7,8 @@ Developed in collaboration with Barcelona Media (http://www.barcelonamedia.org/)
 
 Master thesis available here: http://www.andresperezlopez.com/sites/default/files/Andres_Perez_Master_Thesis.pdf
 
+The code can be easily installed through the Quarks system.
+
 =================
 FEATURES
 
@@ -39,6 +41,14 @@ Dependencies:
 - Quarks: MathLib, RedUniverse
 
 Tested for GNU/Linux. It *should* work for OSX and windows.
+
+================
+EXTRA
+
+Together with the SuperCollider code, we provide other useful complements:
+- Python: scripts for Ambisonics encoding visualization
+- Sounds: 4 mono tracks, ready for spatialization!
+- Android: a Processing sketch providing sensor data in OSC through the local network, in the OrientationController required format. Ready to compile with Processing-Android.
 
 ================
 (C) Andrés Pérez López, 2014
