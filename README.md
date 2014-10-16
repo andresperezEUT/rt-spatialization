@@ -40,6 +40,7 @@ Spatial Render:
 - AmbDec (ambisonics) : http://kokkinizita.linuxaudio.org/linuxaudio/
 - SC3 plugins (vbap) : https://github.com/supercollider/sc3-plugins
 - ATK: Ambisonics Toolkit (binaural) : http://www.ambisonictoolkit.net/wiki/tiki-index.php
+
 Scene Simulator:
 - Quarks: MathLib, redUniverse
 
