@@ -44,7 +44,7 @@ Spatial Render:
 Scene Simulator:
 - Quarks: MathLib, redUniverse
 
-Tested for GNU/Linux. It *should* work for OSX and windows.
+Tested for GNU/Linux. It *should* work for OSX,  and maybe partially for Windows.
 
 ================
 EXTRA
