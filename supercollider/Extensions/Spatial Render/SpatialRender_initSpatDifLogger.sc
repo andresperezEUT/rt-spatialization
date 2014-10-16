@@ -19,11 +19,11 @@
 		// location =
 		// annotation =
 
-
-
-
-		// TODO: osx compatibility
-		spatDifLoggerPath = mySpatDifLoggerPath ? "~/.local/share/SuperCollider/SpatialRender".standardizePath;
+		// cross-os compatibility
+		spatDifLoggerPath = mySpatDifLoggerPath ?? {
+			var string = thisProcess.platform.userExtensionDir;
+			string[..string.findBackwards("/")]++"SpatialRender"
+		};
 
 		("mkdir "++ spatDifLoggerPath).systemCmd; //just in case
 
