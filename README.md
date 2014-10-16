@@ -34,11 +34,14 @@ Interaction:
 - Log and playback user interface gestures
 
 =================
-Dependencies:
+DEPENDENCIES
+
+Spatial Render:
 - AmbDec (ambisonics) : http://kokkinizita.linuxaudio.org/linuxaudio/
 - SC3 plugins (vbap) : https://github.com/supercollider/sc3-plugins
 - ATK: Ambisonics Toolkit (binaural) : http://www.ambisonictoolkit.net/wiki/tiki-index.php
-- Quarks: MathLib, RedUniverse
+Scene Simulator:
+- Quarks: MathLib, redUniverse
 
 Tested for GNU/Linux. It *should* work for OSX and windows.
 
