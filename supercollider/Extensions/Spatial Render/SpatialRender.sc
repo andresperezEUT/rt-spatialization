@@ -32,10 +32,7 @@
 //
 // TODO:
 //
-// -> OSX standard path to fileLogs
-//
 // -> Automatic adding to worldAddresses the direction from received messages
-//
 //
 ////////////////////////////////////////////////////////////////////////////
 
