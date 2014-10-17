@@ -1,6 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Copyright ANDRÉS PÉREZ LÓPEZ, January 2014 [contact@andresperezlopez.com]
+// Copyright (C) Fundació Barcelona Media, October 2014 [www.barcelonamedia.org] 
+// Author: Andrés Pérez López [contact@andresperezlopez.com]
 // original Copyright (C) IEM 2005, Christopher Frauenberger [frauenberger@iem.at]
 //
 // This program is free software: you can redistribute it and/or modify
