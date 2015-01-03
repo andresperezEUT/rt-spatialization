@@ -600,8 +600,12 @@ SpatialRender {
 				encoders.at(name).set(\ele,elevation.degree2rad);
 			}
 			{\binaural} {
+				// put front in back and viceversa
+				var p = Polar(1,azimuth.degree2rad);
+				var theta = (p.asCartesian.asArray[0..1]*[-1,1]++0).asCartesian.asPolar.theta;
+
 				encoders.at(name).set(\r,r);
-				encoders.at(name).set(\azi,((azimuth.degree2rad.neg)));
+				encoders.at(name).set(\azi,((theta))); /////////////////
 				encoders.at(name).set(\ele,elevation.degree2rad);
 			}
 			{\vbap} {
