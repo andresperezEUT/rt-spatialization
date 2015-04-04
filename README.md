@@ -1,6 +1,11 @@
 3Dj
 =================
 
+---------------------
+THIS REPOSITORY HAS MOVED TO github.com/andresperezlopez/3Dj
+New updates will be commited there
+---------------------
+
 3Dj is a SuperCollider library for real-time interactive 3D sound spatialization.
 
 Developed in collaboration with Barcelona Media (http://www.barcelonamedia.org/) as the implementation part of the Master Thesis "Real-Time 3D Audio Spatialization Tools for Interactive Performance", Music Technology Group, Pompeu Fabra University, Barcelona.
