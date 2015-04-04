@@ -1,10 +1,10 @@
 3Dj
 =================
 
----------------------
+
 THIS REPOSITORY HAS MOVED TO github.com/andresperezlopez/3Dj
 New updates will be commited there
----------------------
+
 
 3Dj is a SuperCollider library for real-time interactive 3D sound spatialization.
 
